@@ -1,0 +1,284 @@
+/* Markup Reviewer — GitHub-style inline diff + review panel. */
+
+body {
+	--markup-reviewer-del-bg: rgba(255, 129, 130, 0.28);
+	--markup-reviewer-del-fg: #b31d28;
+	--markup-reviewer-add-bg: rgba(46, 160, 67, 0.22);
+	--markup-reviewer-add-fg: #116329;
+	--markup-reviewer-focus-bg: rgba(212, 167, 44, 0.28);
+}
+
+.theme-dark {
+	--markup-reviewer-del-bg: rgba(248, 81, 73, 0.26);
+	--markup-reviewer-del-fg: #ffa198;
+	--markup-reviewer-add-bg: rgba(46, 160, 67, 0.3);
+	--markup-reviewer-add-fg: #7ee787;
+	--markup-reviewer-focus-bg: rgba(187, 128, 9, 0.3);
+}
+
+/* ── In the note ─────────────────────────────────────────────── */
+
+.markup-reviewer-del,
+.markup-reviewer-trail-del {
+	background-color: var(--markup-reviewer-del-bg);
+	text-decoration: line-through;
+	text-decoration-color: var(--markup-reviewer-del-fg);
+	border-radius: 2px;
+}
+
+.markup-reviewer-add,
+.markup-reviewer-trail-add {
+	background-color: var(--markup-reviewer-add-bg);
+	border-radius: 2px;
+}
+
+.markup-reviewer-add,
+.markup-reviewer-trail-del {
+	white-space: pre-wrap;
+}
+
+/* The pending edit gets an outline so it stands out from the trail. */
+.markup-reviewer-del {
+	box-shadow: 0 0 0 1px var(--markup-reviewer-del-fg) inset;
+}
+.markup-reviewer-add {
+	box-shadow: 0 0 0 1px var(--markup-reviewer-add-fg) inset;
+}
+
+.markup-reviewer-trail-del {
+	opacity: 0.75;
+}
+
+.markup-reviewer-focus {
+	background-color: var(--markup-reviewer-focus-bg);
+	border-radius: 2px;
+}
+
+.markup-reviewer-caret {
+	color: var(--interactive-accent);
+	font-weight: var(--font-bold);
+}
+
+/* ── Panel ───────────────────────────────────────────────────── */
+
+.markup-reviewer {
+	padding: var(--size-4-2) var(--size-4-3);
+}
+
+.markup-reviewer-head {
+	position: sticky;
+	top: calc(-1 * var(--size-4-2));
+	z-index: 1;
+	background: var(--background-secondary);
+	padding: var(--size-4-2) 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: var(--size-4-2);
+}
+
+.markup-reviewer-note a {
+	font-weight: var(--font-semibold);
+	cursor: pointer;
+}
+
+.markup-reviewer-sub {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.markup-reviewer-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1);
+	margin-top: var(--size-4-2);
+}
+
+.markup-reviewer-toolbar button {
+	font-size: var(--font-ui-smaller);
+}
+
+.markup-reviewer-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.markup-reviewer-card {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	padding: var(--size-4-2);
+	background: var(--background-primary);
+	cursor: pointer;
+}
+
+.markup-reviewer-card.is-selected {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.markup-reviewer-card.is-implemented,
+.markup-reviewer-card.is-skipped {
+	opacity: 0.6;
+}
+
+.markup-reviewer-card.is-skipped .markup-reviewer-original {
+	text-decoration: none;
+}
+
+.markup-reviewer-card-top {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.markup-reviewer-ink {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	display: inline-block;
+	background: var(--text-faint);
+}
+.markup-reviewer-ink-blue {
+	background: #1f6feb;
+}
+.markup-reviewer-ink-red {
+	background: #d1242f;
+}
+.markup-reviewer-ink-black {
+	background: var(--text-normal);
+}
+
+.markup-reviewer-kind {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
+.markup-reviewer-conf.is-low {
+	color: var(--text-error);
+}
+.markup-reviewer-conf.is-medium {
+	color: var(--text-warning);
+}
+
+.markup-reviewer-status {
+	margin-left: auto;
+	text-transform: capitalize;
+}
+
+.markup-reviewer-mark {
+	margin-top: var(--size-4-1);
+	font-style: italic;
+	font-size: var(--font-ui-small);
+}
+
+.markup-reviewer-original {
+	margin-top: var(--size-4-1);
+	padding: 2px var(--size-4-1);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	white-space: pre-wrap;
+	background: var(--markup-reviewer-del-bg);
+	text-decoration: line-through;
+	border-radius: var(--radius-s);
+}
+
+.markup-reviewer-final {
+	margin-top: var(--size-4-1);
+	padding: 2px var(--size-4-1);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	white-space: pre-wrap;
+	background: var(--markup-reviewer-add-bg);
+	border-radius: var(--radius-s);
+}
+
+.markup-reviewer-text {
+	width: 100%;
+	margin-top: var(--size-4-1);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+	resize: vertical;
+	background: var(--markup-reviewer-add-bg);
+}
+
+.markup-reviewer-card.is-edited .markup-reviewer-text {
+	border-color: var(--interactive-accent);
+}
+
+.markup-reviewer-warn {
+	margin-top: var(--size-4-1);
+	color: var(--text-error);
+	font-size: var(--font-ui-smaller);
+}
+
+.markup-reviewer-hint {
+	margin-top: var(--size-4-1);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.markup-reviewer-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1);
+	margin-top: var(--size-4-2);
+}
+
+.markup-reviewer-sel {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	font-size: var(--font-ui-smaller);
+}
+
+.markup-reviewer-sel svg {
+	width: 14px;
+	height: 14px;
+}
+
+.markup-reviewer-busy,
+.markup-reviewer-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-3);
+	padding: var(--size-4-8) var(--size-4-2);
+	text-align: center;
+	color: var(--text-muted);
+}
+
+.markup-reviewer-spinner {
+	width: 28px;
+	height: 28px;
+	border: 3px solid var(--background-modifier-border);
+	border-top-color: var(--interactive-accent);
+	border-radius: 50%;
+	animation: markup-reviewer-spin 0.9s linear infinite;
+}
+
+@keyframes markup-reviewer-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.markup-reviewer-error {
+	border: 1px solid var(--text-error);
+	border-radius: var(--radius-m);
+	padding: var(--size-4-2);
+	margin-bottom: var(--size-4-2);
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.markup-reviewer-notes {
+	margin-bottom: var(--size-4-2);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.markup-reviewer-browse {
+	font-style: italic;
+}
