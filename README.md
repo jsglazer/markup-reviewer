@@ -1,5 +1,7 @@
 # Markup Reviewer
 
+[![GitHub release](https://img.shields.io/github/v/release/jsglazer/markup-reviewer?logo=github)](https://github.com/jsglazer/markup-reviewer/releases) [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/jsglazer/markup-reviewer/blob/main/LICENSE) [![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97756?logo=anthropic)](https://claude.ai)
+
 An Obsidian plugin for the print → mark up by hand → scan → revise loop. Print a note (for example with [Render Doc](https://github.com/jsglazer/render-doc)), mark it up with a pen, scan the pages to a PDF, and Markup Reviewer has Claude read every pen mark and turn it into an edit you can implement or skip from a side panel, with a GitHub-style diff shown right in the note.
 
 ## How it works
