@@ -8,6 +8,7 @@ body {
 	--markup-reviewer-focus-bg: rgba(212, 167, 44, 0.28);
 	--markup-reviewer-track-del: #cf222e;
 	--markup-reviewer-track-add: #319a50;
+	--markup-reviewer-track-add-bg: #effbf0;
 	--markup-reviewer-track-move: #8250df;
 	--markup-reviewer-track-move-bg: rgba(130, 80, 223, 0.12);
 }
@@ -20,6 +21,7 @@ body {
 	--markup-reviewer-focus-bg: rgba(187, 128, 9, 0.3);
 	--markup-reviewer-track-del: #ff7b72;
 	--markup-reviewer-track-add: #319a50;
+	--markup-reviewer-track-add-bg: #effbf0;
 	--markup-reviewer-track-move: #bc8cff;
 	--markup-reviewer-track-move-bg: rgba(188, 140, 255, 0.14);
 }
@@ -77,9 +79,11 @@ body {
 	white-space: pre-wrap;
 }
 
-/* Additions: green text. */
+/* Additions: green text on a very light green background. */
 .markup-reviewer-track-add {
 	color: var(--markup-reviewer-track-add);
+	background-color: var(--markup-reviewer-track-add-bg);
+	border-radius: 2px;
 }
 
 /* Moves and pasted copies: purple, with a marker where they came from. */
