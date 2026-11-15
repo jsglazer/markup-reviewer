@@ -60,7 +60,7 @@ All commands appear in the command palette prefixed with **Markup Reviewer:**, a
 | Command | What it does |
 |---|---|
 | Review markup from a scanned PDF | Pick a scan of the open note; Claude reads the pen marks and opens one card per edit in the review panel. Offers to resume if the note already has a saved review. Also the pen icon in the ribbon. |
-| Toggle review panel | Close the review panel if it's showing; otherwise open it, with the open note's saved review if it has one. |
+| Toggle review panel | Close the review panel and collapse its sidebar if it's showing; otherwise open it (with the open note's saved review if it has one) and expand the sidebar. |
 | Undo last implement or skip | Step back through the panel's Implement and Skip actions, newest first. |
 | Clear diff highlights | Remove the green/red highlights left by implemented edits (display only; the note is unchanged). |
 

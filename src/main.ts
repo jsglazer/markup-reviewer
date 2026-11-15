@@ -1,4 +1,12 @@
-import { MarkdownView, Notice, Plugin, TFile, arrayBufferToBase64, debounce } from 'obsidian';
+import {
+	MarkdownView,
+	Notice,
+	Plugin,
+	TFile,
+	arrayBufferToBase64,
+	debounce,
+	type WorkspaceLeaf,
+} from 'obsidian';
 import { MAX_PDF_BYTES, readMarkup } from './claude';
 import { markupDiffExtension } from './cm-diff';
 import { UndoStack } from './core/history';
@@ -208,14 +216,29 @@ export default class MarkupReviewerPlugin extends Plugin {
 		return leaf?.view instanceof MarkupReviewView ? leaf.view : null;
 	}
 
-	/** Close the review panel if it's showing; otherwise open (or reveal) it. */
+	/** The sidebar a leaf sits in, if any. */
+	private sidebarOf(leaf: WorkspaceLeaf) {
+		const ws = this.app.workspace;
+		const root = leaf.getRoot();
+		if (root === ws.rightSplit) return ws.rightSplit;
+		if (root === ws.leftSplit) return ws.leftSplit;
+		return null;
+	}
+
+	/**
+	 * Close the review panel and collapse its sidebar if it's showing; otherwise
+	 * open (or reveal) it and expand the sidebar.
+	 */
 	private async togglePanel(): Promise<void> {
 		const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE)[0];
 		if (leaf && leaf.view.containerEl.isShown()) {
+			const side = this.sidebarOf(leaf);
 			leaf.detach();
+			side?.collapse();
 			return;
 		}
-		await this.openPanel();
+		const view = await this.openPanel();
+		if (view) this.sidebarOf(view.leaf)?.expand();
 	}
 
 	private async openPanel(): Promise<MarkupReviewView | null> {
