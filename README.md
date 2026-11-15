@@ -49,6 +49,31 @@ With **Keep a change log** on, each push also appends the commit message and the
 
 The markup shows in Live Preview and Source mode; Reading view shows the final text.
 
+## Commands
+
+All commands appear in the command palette prefixed with **Markup Reviewer:**, and any of them can be given a hotkey.
+
+**Reviewing a scan**
+
+| Command | What it does |
+|---|---|
+| Review markup from a scanned PDF | Pick a scan of the open note; Claude reads the pen marks and opens one card per edit in the review panel. Offers to resume if the note already has a saved review. Also the pen icon in the ribbon. |
+| Open review panel | Show the review panel, with the open note's saved review if it has one. |
+| Undo last implement or skip | Step back through the panel's Implement and Skip actions, newest first. |
+| Clear diff highlights | Remove the green/red highlights left by implemented edits (display only; the note is unchanged). |
+
+**Tracking your own edits**
+
+| Command | What it does |
+|---|---|
+| Start tracking edits in this note | Fetch the GitHub copy as the original (pushing the note first if it isn't on GitHub) and start showing your edits. Also the compare icon in the ribbon when the note isn't tracked. |
+| Done: commit and push to GitHub | Check the GitHub copy is unchanged, show Claude's draft commit message for you to edit or approve, stamp `pushed:` and push. Also the status bar's Push button, the upload button in the note's header, and the ribbon's compare icon on a tracked note. |
+| Stop tracking edits in this note | Clear the marks and move the copy of the original to the trash; the note and GitHub are unchanged. |
+| Cycle display: original, markup, final | Switch to the next display mode. Also the compare button in the note's header. |
+| Show the original | Show the text as it is on GitHub: additions hidden, deletions shown as plain text. The note is read-only in this view. |
+| Show the markup | Show your edits: red struck deletions, green additions, purple moves and copies. |
+| Show the final text | Show the note as it is, with no marks. |
+
 ## Settings
 
 | Setting | Default | |
