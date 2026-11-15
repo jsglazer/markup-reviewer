@@ -9,12 +9,15 @@ import {
 	MarkupReviewerSettingTab,
 	type MarkupReviewerSettings,
 } from './settings';
+import { EditTracker } from './tracker';
 import { MarkupReviewView, VIEW_TYPE } from './view';
 
 export default class MarkupReviewerPlugin extends Plugin {
 	settings!: MarkupReviewerSettings;
 	/** Undo for panel actions; lives on the plugin so closing the panel keeps it. */
 	undo!: UndoStack;
+	/** Manual edit tracking against the GitHub original. */
+	tracker!: EditTracker;
 	/** Path of the note whose review the panel shows. */
 	private activePath: string | null = null;
 
@@ -27,6 +30,9 @@ export default class MarkupReviewerPlugin extends Plugin {
 		this.registerView(VIEW_TYPE, (leaf) => new MarkupReviewView(leaf, this));
 		this.registerEditorExtension(markupDiffExtension);
 		this.addSettingTab(new MarkupReviewerSettingTab(this.app, this));
+		this.tracker = new EditTracker(this);
+		this.tracker.load();
+		this.registerTrackCommands();
 
 		this.addRibbonIcon('pen-line', 'Review markup from a scanned PDF', () => {
 			void this.startFromActiveNote();
@@ -84,12 +90,75 @@ export default class MarkupReviewerPlugin extends Plugin {
 	}
 
 	onunload(): void {
+		this.tracker?.unload();
 		this.saveSessionSoon.run();
+	}
+
+	/** Commands and ribbon button for manual edit tracking. */
+	private registerTrackCommands(): void {
+		const withNote = (fn: (file: TFile) => Promise<void>) => (): void => {
+			const file = this.activeNote();
+			if (!file) {
+				new Notice('Open the note first, then run this command again.');
+				return;
+			}
+			void fn(file);
+		};
+
+		this.addRibbonIcon('git-compare', 'Track edits, or commit and push them', () => {
+			const file = this.activeNote();
+			if (!file) {
+				new Notice('Open the note first.');
+				return;
+			}
+			void (this.tracker.isTracked(file.path) ? this.tracker.done(file) : this.tracker.start(file));
+		});
+
+		this.addCommand({
+			id: 'track-start',
+			name: 'Start tracking edits in this note',
+			callback: withNote((f) => this.tracker.start(f)),
+		});
+		this.addCommand({
+			id: 'track-done',
+			name: 'Done: commit and push to GitHub',
+			callback: withNote((f) => this.tracker.done(f)),
+		});
+		this.addCommand({
+			id: 'track-stop',
+			name: 'Stop tracking edits in this note',
+			callback: withNote((f) => this.tracker.stop(f)),
+		});
+		this.addCommand({
+			id: 'track-cycle',
+			name: 'Cycle display: original, markup, final',
+			callback: () => void this.tracker.cycleMode(),
+		});
+		this.addCommand({
+			id: 'track-show-original',
+			name: 'Show the original',
+			callback: () => void this.tracker.setMode('original'),
+		});
+		this.addCommand({
+			id: 'track-show-markup',
+			name: 'Show the markup',
+			callback: () => void this.tracker.setMode('markup'),
+		});
+		this.addCommand({
+			id: 'track-show-final',
+			name: 'Show the final text',
+			callback: () => void this.tracker.setMode('final'),
+		});
 	}
 
 	async loadSettings(): Promise<void> {
 		const data = ((await this.loadData()) ?? {}) as Partial<MarkupReviewerSettings>;
-		this.settings = { ...DEFAULT_SETTINGS, ...data, sessions: data.sessions ?? {} };
+		this.settings = {
+			...DEFAULT_SETTINGS,
+			...data,
+			sessions: data.sessions ?? {},
+			tracking: data.tracking ?? {},
+		};
 		this.settings.undoLevels = Math.max(5, this.settings.undoLevels);
 	}
 
@@ -153,7 +222,7 @@ export default class MarkupReviewerPlugin extends Plugin {
 		return file && file.extension === 'md' ? file : null;
 	}
 
-	private apiKey(): string | null {
+	apiKey(): string | null {
 		const id = this.settings.apiKeySecret;
 		if (!id) return null;
 		return this.app.secretStorage.getSecret(id);

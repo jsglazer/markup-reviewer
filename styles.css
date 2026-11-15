@@ -6,6 +6,10 @@ body {
 	--markup-reviewer-add-bg: rgba(46, 160, 67, 0.22);
 	--markup-reviewer-add-fg: #116329;
 	--markup-reviewer-focus-bg: rgba(212, 167, 44, 0.28);
+	--markup-reviewer-track-del: #cf222e;
+	--markup-reviewer-track-add: #1a7f37;
+	--markup-reviewer-track-move: #8250df;
+	--markup-reviewer-track-move-bg: rgba(130, 80, 223, 0.12);
 }
 
 .theme-dark {
@@ -14,6 +18,10 @@ body {
 	--markup-reviewer-add-bg: rgba(46, 160, 67, 0.3);
 	--markup-reviewer-add-fg: #7ee787;
 	--markup-reviewer-focus-bg: rgba(187, 128, 9, 0.3);
+	--markup-reviewer-track-del: #ff7b72;
+	--markup-reviewer-track-add: #3fb950;
+	--markup-reviewer-track-move: #bc8cff;
+	--markup-reviewer-track-move-bg: rgba(188, 140, 255, 0.14);
 }
 
 /* ── In the note ─────────────────────────────────────────────── */
@@ -57,6 +65,93 @@ body {
 .markup-reviewer-caret {
 	color: var(--interactive-accent);
 	font-weight: var(--font-bold);
+}
+
+/* ── Tracked manual edits ────────────────────────────────────── */
+
+/* Deletions: red text with a red strikethrough. */
+.markup-reviewer-track-del {
+	color: var(--markup-reviewer-track-del);
+	text-decoration: line-through;
+	text-decoration-color: var(--markup-reviewer-track-del);
+	white-space: pre-wrap;
+}
+
+/* Additions: green text. */
+.markup-reviewer-track-add {
+	color: var(--markup-reviewer-track-add);
+}
+
+/* Moves and pasted copies: purple, with a marker where they came from. */
+.markup-reviewer-track-move {
+	color: var(--markup-reviewer-track-move);
+	background-color: var(--markup-reviewer-track-move-bg);
+	border-radius: 2px;
+}
+
+.markup-reviewer-track-origin {
+	color: var(--markup-reviewer-track-move);
+	font-weight: var(--font-bold);
+	padding: 0 1px;
+	cursor: pointer;
+}
+
+/* Original view: deleted text shown as plain text. */
+.markup-reviewer-track-orig {
+	white-space: pre-wrap;
+}
+
+.markup-reviewer-status {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.markup-reviewer-status-icon {
+	display: inline-flex;
+}
+
+.markup-reviewer-status-icon svg {
+	width: 12px;
+	height: 12px;
+}
+
+.markup-reviewer-status-mode,
+.markup-reviewer-status-push {
+	cursor: pointer;
+	padding: 0 var(--size-2-2);
+	border-radius: var(--radius-s);
+}
+
+.markup-reviewer-status-mode:hover,
+.markup-reviewer-status-push:hover {
+	background: var(--background-modifier-hover);
+}
+
+.markup-reviewer-status-mode.is-active {
+	color: var(--text-on-accent);
+	background: var(--interactive-accent);
+}
+
+.markup-reviewer-status-push {
+	font-weight: var(--font-semibold);
+	color: var(--text-accent);
+}
+
+.markup-reviewer-commit-text,
+.markup-reviewer-prompt-input {
+	width: 100%;
+	margin-top: var(--size-4-2);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+}
+
+.markup-reviewer-commit-text {
+	resize: vertical;
+}
+
+.markup-reviewer-sub.mod-warning {
+	color: var(--text-warning);
 }
 
 /* ── Panel ───────────────────────────────────────────────────── */

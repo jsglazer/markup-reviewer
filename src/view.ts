@@ -222,7 +222,11 @@ export class MarkupReviewView extends ItemView {
 				inserted: change.inserted,
 				ctx: doc.slice(Math.max(0, change.from - 30), change.from),
 			};
-			if (this.plugin.settings.keepTrail) {
+			// A tracked note already shows every change in its markup layer.
+			if (
+				this.plugin.settings.keepTrail &&
+				!this.plugin.tracker.isTracked(this.session?.notePath)
+			) {
 				addTrailMark(editor, {
 					editId: edit.id,
 					from: change.from,

@@ -42,3 +42,25 @@ ${numberLines(markdown)}
 
 The attached PDF is the marked-up scan. Return every pen mark as an edit.`;
 }
+
+// ── Commit messages for tracked manual edits ───────────────────────────
+
+export const COMMIT_SYSTEM = `You write git commit messages for revisions to a document written in Markdown (often an academic paper).
+
+Output only the commit message, with no preamble and no code fences:
+- A summary line of at most 72 characters, in the imperative mood ("Tighten the introduction", "Add contribution-limit hypothesis").
+- A blank line.
+- Two to six bullet points starting with "- ", each naming one substantive change (argument, wording, structure, citations, data). Group small wording fixes into one bullet. Skip pure whitespace or formatting changes unless they are the only changes.
+
+Describe what changed and why it matters to the reader of the document, using the document's own terms. Do not invent changes that are not in the diff.`;
+
+export function commitPrompt(noteName: string, stats: string, changes: string): string {
+	return `Document: ${noteName}
+Changes since the last push (${stats}). They are shown in CriticMarkup: {++added text++}, {--deleted text--}, and {>>moved<<} / {>>moved here<<} mark the two ends of a move. Each passage starts with its line number in the current document.
+
+<changes>
+${changes}
+</changes>
+
+Write the commit message.`;
+}

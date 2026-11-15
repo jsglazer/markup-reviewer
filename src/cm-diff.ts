@@ -11,9 +11,17 @@
  * 6 EditorView behind a MarkdownView). Targeted against Obsidian 1.14.4
  * (@codemirror/view 6.43.13).
  */
-import { StateEffect, StateField, type Extension, type Range } from '@codemirror/state';
+import {
+	Compartment,
+	EditorState,
+	StateEffect,
+	StateField,
+	type Extension,
+	type Range,
+} from '@codemirror/state';
 import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view';
 import type { Editor } from 'obsidian';
+import type { TrackMark } from './core/track';
 
 export interface DiffSpec {
 	from: number;
@@ -146,10 +154,175 @@ const trailField = StateField.define<DecorationSet>({
 	provide: (f) => EditorView.decorations.from(f),
 });
 
-/** Register once via plugin.registerEditorExtension. */
-export const markupDiffExtension: Extension = [previewField, trailField];
+// ── Manual edit tracking ────────────────────────────────────────────
 
-function viewOf(editor: Editor): EditorView | null {
+export type TrackMode = 'original' | 'markup' | 'final';
+
+/** A marker at the source of a move or copy; clicking it jumps to where the text went. */
+class OriginWidget extends WidgetType {
+	constructor(
+		readonly symbol: string,
+		readonly title: string,
+		readonly dest: number | undefined,
+	) {
+		super();
+	}
+	eq(other: OriginWidget): boolean {
+		return other.symbol === this.symbol && other.title === this.title && other.dest === this.dest;
+	}
+	toDOM(view: EditorView): HTMLElement {
+		const el = activeDocument.createElement('span');
+		el.className = 'markup-reviewer-track-origin';
+		el.textContent = this.symbol;
+		el.setAttribute('aria-label', this.title);
+		el.title = this.title;
+		el.addEventListener('mousedown', (e) => {
+			if (this.dest === undefined) return;
+			e.preventDefault();
+			const pos = clamp(this.dest, view.state.doc.length);
+			view.dispatch({
+				selection: { anchor: pos },
+				effects: EditorView.scrollIntoView(pos, { y: 'center' }),
+			});
+		});
+		return el;
+	}
+	ignoreEvent(): boolean {
+		return true;
+	}
+}
+
+function preview(text: string): string {
+	const t = text.replace(/\s+/g, ' ').trim();
+	return t.length > 80 ? `${t.slice(0, 77)}…` : t;
+}
+
+function trackDecorations(marks: TrackMark[], mode: TrackMode, docLen: number): DecorationSet {
+	if (mode === 'final') return Decoration.none;
+	const out: Range<Decoration>[] = [];
+	for (const m of marks) {
+		if (m.type === 'add') {
+			const from = clamp(m.from, docLen);
+			const to = clamp(m.to, docLen);
+			if (to <= from) continue;
+			if (mode === 'original') {
+				out.push(Decoration.replace({}).range(from, to));
+			} else {
+				out.push(
+					Decoration.mark({
+						class: m.moved ? 'markup-reviewer-track-move' : 'markup-reviewer-track-add',
+						attributes: m.moved ? { title: 'Moved or copied here' } : {},
+					}).range(from, to),
+				);
+			}
+		} else if (m.type === 'del') {
+			const at = clamp(m.at, docLen);
+			if (mode === 'original') {
+				out.push(
+					Decoration.widget({
+						widget: new TextWidget(m.text, 'markup-reviewer-track-orig', 'Original text'),
+						side: -1,
+					}).range(at),
+				);
+			} else if (m.moved) {
+				out.push(
+					Decoration.widget({
+						widget: new OriginWidget('↱', `Moved from here: “${preview(m.text)}”`, m.dest),
+						side: -1,
+					}).range(at),
+				);
+			} else {
+				out.push(
+					Decoration.widget({
+						widget: new TextWidget(m.text, 'markup-reviewer-track-del', 'Deleted text'),
+						side: -1,
+					}).range(at),
+				);
+			}
+		} else if (mode === 'markup') {
+			out.push(
+				Decoration.widget({
+					widget: new OriginWidget('⧉', `Copied from here: “${preview(m.text)}”`, m.dest),
+					side: -1,
+				}).range(clamp(m.at, docLen)),
+			);
+		}
+	}
+	return Decoration.set(out, true);
+}
+
+const setTrack = StateEffect.define<{ marks: TrackMark[]; mode: TrackMode } | null>();
+
+const trackField = StateField.define<DecorationSet>({
+	create: () => Decoration.none,
+	update(deco, tr) {
+		let next = deco.map(tr.changes);
+		for (const e of tr.effects) {
+			if (e.is(setTrack))
+				next = e.value
+					? trackDecorations(e.value.marks, e.value.mode, tr.state.doc.length)
+					: Decoration.none;
+		}
+		return next;
+	},
+	provide: (f) => EditorView.decorations.from(f),
+});
+
+/** Per-editor read-only switch, used while showing the Original. */
+const readOnlyCompartment = new Compartment();
+
+/** Called with the texts a paste, drop or drag-move inserted (move/copy hints). */
+type PasteHook = (view: EditorView, texts: string[]) => void;
+let pasteHook: PasteHook | null = null;
+
+export function setPasteHook(hook: PasteHook | null): void {
+	pasteHook = hook;
+}
+
+const pasteListener = EditorView.updateListener.of((u) => {
+	if (!pasteHook || !u.docChanged) return;
+	const texts: string[] = [];
+	for (const tr of u.transactions) {
+		if (
+			!tr.isUserEvent('input.paste') &&
+			!tr.isUserEvent('input.drop') &&
+			!tr.isUserEvent('move.drop')
+		)
+			continue;
+		tr.changes.iterChanges((_fa, _ta, _fb, _tb, inserted) => {
+			const t = inserted.toString();
+			if (t.trim()) texts.push(t);
+		});
+	}
+	if (texts.length) pasteHook(u.view, texts);
+});
+
+/** Register once via plugin.registerEditorExtension. */
+export const markupDiffExtension: Extension = [
+	previewField,
+	trailField,
+	trackField,
+	readOnlyCompartment.of([]),
+	pasteListener,
+];
+
+/** Show (or clear, with null) the tracked-edit marks in one editor. */
+export function showTrack(
+	view: EditorView,
+	spec: { marks: TrackMark[]; mode: TrackMode } | null,
+): void {
+	view.dispatch({ effects: setTrack.of(spec) });
+}
+
+export function setReadOnly(view: EditorView, readOnly: boolean): void {
+	const want = readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
+	const current = readOnlyCompartment.get(view.state);
+	const isOn = Array.isArray(current) && current.length > 0;
+	if (isOn === readOnly) return;
+	view.dispatch({ effects: readOnlyCompartment.reconfigure(want) });
+}
+
+export function viewOf(editor: Editor): EditorView | null {
 	const cm = (editor as unknown as { cm?: unknown }).cm;
 	return cm instanceof EditorView ? cm : null;
 }

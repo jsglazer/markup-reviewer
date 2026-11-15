@@ -2,7 +2,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/jsglazer/markup-reviewer?logo=github)](https://github.com/jsglazer/markup-reviewer/releases) [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/jsglazer/markup-reviewer/blob/main/LICENSE) [![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97756?logo=anthropic)](https://claude.ai)
 
-An Obsidian plugin for the print → mark up by hand → scan → revise loop. Print a note (for example with [Render Doc](https://github.com/jsglazer/render-doc)), mark it up with a pen, scan the pages to a PDF, and Markup Reviewer has Claude read every pen mark and turn it into an edit you can implement or skip from a side panel, with a GitHub-style diff shown right in the note.
+An Obsidian plugin for revising notes: the print → mark up by hand → scan → revise loop, and tracking the edits you type yourself before pushing them to GitHub. Print a note (for example with [Render Doc](https://github.com/jsglazer/render-doc)), mark it up with a pen, scan the pages to a PDF, and Markup Reviewer has Claude read every pen mark and turn it into an edit you can implement or skip from a side panel, with a GitHub-style diff shown right in the note.
 
 ## How it works
 
@@ -29,6 +29,26 @@ Edits are narrowed to the words that actually change, so striking "very" and wri
 
 Reviews are saved per note, so closing the panel or Obsidian doesn't lose your place: running the command on the same note offers to resume. The undo history lasts for the Obsidian session.
 
+## Tracking your own edits
+
+Markup Reviewer can also track edits you make by hand, show them as you type, and push the finished note to GitHub. Pen-scan edits you implement from the panel show up in the same markup.
+
+1. Open the note and run **Markup Reviewer: Start tracking edits in this note** (or click the compare icon in the ribbon).
+2. The note's `git:` frontmatter field names its folder in the repository (for example `git: Classes/2026-B/RD - POGO 801/Assign/Final/`); the note's file name is added to it. If the field is blank you're asked for a folder, prefilled with the note's vault folder.
+3. The copy on GitHub is the **original**. If the note isn't on GitHub yet you're asked whether to push the current version as the original. The original is also kept next to the note as `Final.original.md` (the suffix is a setting), so it works offline and you can open or fix it by hand.
+4. Edit normally. Shortly after each change the note is compared with the original:
+   - deletions: red text with a red strikethrough
+   - additions: green text
+   - moves and pasted copies: purple, with a purple marker (↱ or ⧉) where the text came from; click the marker to jump to where it went
+5. Switch the display between **Original**, **Markup** and **Final** from the status bar, the commands, or the compare button in the note's header. The Original view is read-only.
+6. When you're done, click **Push** in the status bar (or the upload button in the note's header, or **Done: commit and push to GitHub**). Markup Reviewer checks that the GitHub copy hasn't changed since you started, has Claude draft a commit message, and shows it in a popup you can edit. Nothing is pushed until you click **Approve and push**. Then it stamps `pushed:` (YYYYMMDD-HHMMSS), pushes the note, and makes the pushed version the new original.
+
+Your text is always in the note itself and saved by Obsidian as usual; the marks are only drawn on screen and are recalculated from the note and the original, so they survive undo, reloads and edits made elsewhere. Nothing is written into the note except the `git:` and `pushed:` fields. **Stop tracking edits in this note** clears the marks and moves the copy of the original to the trash; the note and GitHub are untouched.
+
+With **Keep a change log** on, each push also appends the commit message and the changes (in [CriticMarkup](https://github.com/CriticMarkup/CriticMarkup-toolkit)) to a `{note} Changes` note next to the note.
+
+The markup shows in Live Preview and Source mode; Reading view shows the final text.
+
 ## Settings
 
 | Setting | Default | |
@@ -40,6 +60,11 @@ Reviews are saved per note, so closing the panel or Obsidian doesn't lose your p
 | Undo levels | 20 | 5–100. |
 | Keep implemented edits highlighted | On | |
 | Advance automatically | On | Select the next pending edit after Implement or Skip. |
+| GitHub token | `github-papers-token` secret | A fine-grained personal access token with Contents read and write access to the repository, stored in Obsidian's keychain. |
+| Repository | `jsglazer/papers` | Where tracked notes are pushed. |
+| Branch | `main` | |
+| Original file suffix | `.original.md` | The local copy of the original sits next to the note under this name. |
+| Keep a change log | Off | Append each push's commit message and changes to `{note} Changes`. |
 
 ## Limits
 
@@ -51,11 +76,11 @@ Reviews are saved per note, so closing the panel or Obsidian doesn't lose your p
 ```
 npm install
 npm run build      # type-check + production bundle → main.js
-npm test           # vitest unit tests for the pure core (anchoring, diff, undo, schema)
+npm test           # vitest unit tests for the pure core (anchoring, diff, undo, schema, edit tracking)
 npm run lint
 ```
 
-The pure logic lives in `src/core/` (no Obsidian imports). `src/cm-diff.ts` is the only module that touches CodeMirror through Obsidian's undocumented `editor.cm`.
+The pure logic lives in `src/core/` (no Obsidian imports), including `track.ts` (original vs current → add/delete/move marks), `frontmatter.ts` and `repo.ts`. `src/tracker.ts` runs edit tracking, `src/github.ts` talks to the GitHub Contents API, and `src/cm-diff.ts` is the only module that touches CodeMirror through Obsidian's undocumented `editor.cm`.
 
 ## License
 

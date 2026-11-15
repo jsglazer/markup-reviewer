@@ -1,6 +1,18 @@
 import { App, PluginSettingTab, SecretComponent, Setting } from 'obsidian';
 import type MarkupReviewerPlugin from './main';
 import type { ReviewSession } from './core/types';
+import type { TrackMode } from './cm-diff';
+
+/** A note whose manual edits are being tracked against its GitHub original. */
+export interface TrackState {
+	/** File path in the repo the note pushes to. */
+	repoPath: string;
+	/** Blob SHA of the original on GitHub (null if it wasn't there). */
+	sha: string | null;
+	startedAt: string;
+	/** Texts recently pasted or dropped into the note: hints for detecting moves. */
+	pastes: string[];
+}
 
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
@@ -19,6 +31,19 @@ export interface MarkupReviewerSettings {
 	scanFolder: string;
 	/** Review sessions by note path, so closing the panel or Obsidian doesn't lose progress. */
 	sessions: Record<string, ReviewSession>;
+	/** Name of the secret in Obsidian's SecretStorage holding the GitHub token. */
+	githubTokenSecret: string;
+	/** `owner/name` of the repo tracked notes push to. */
+	githubRepo: string;
+	githubBranch: string;
+	/** Appended to the note's name for the local copy of the original. */
+	originalSuffix: string;
+	/** Append each push's message and changes to `{note} Changes.md`. */
+	changeLog: boolean;
+	/** How tracked edits are displayed. */
+	trackMode: TrackMode;
+	/** Tracked notes by path. */
+	tracking: Record<string, TrackState>;
 }
 
 export const DEFAULT_SETTINGS: MarkupReviewerSettings = {
@@ -30,6 +55,13 @@ export const DEFAULT_SETTINGS: MarkupReviewerSettings = {
 	autoAdvance: true,
 	scanFolder: '',
 	sessions: {},
+	githubTokenSecret: 'github-papers-token',
+	githubRepo: 'jsglazer/papers',
+	githubBranch: 'main',
+	originalSuffix: '.original.md',
+	changeLog: false,
+	trackMode: 'markup',
+	tracking: {},
 };
 
 const MODELS: Record<string, string> = {
@@ -147,6 +179,77 @@ export class MarkupReviewerSettingTab extends PluginSettingTab {
 			.addToggle((t) =>
 				t.setValue(s.autoAdvance).onChange(async (value) => {
 					s.autoAdvance = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl).setName('Track manual edits').setHeading();
+
+		new Setting(containerEl)
+			.setName('GitHub token')
+			.setDesc(
+				// eslint-disable-next-line obsidianmd/ui/sentence-case -- "Contents" is GitHub's permission name
+				"A fine-grained personal access token with Contents read and write access to the repository below, kept in Obsidian's keychain.",
+			)
+			.addComponent((el) =>
+				new SecretComponent(this.app, el).setValue(s.githubTokenSecret).onChange(async (value) => {
+					s.githubTokenSecret = value ?? '';
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Repository')
+			.setDesc(
+				// eslint-disable-next-line obsidianmd/ui/sentence-case -- "git:" is the literal frontmatter field
+				"Where tracked notes are pushed, as owner/name. The note's git: field is the folder inside it.",
+			)
+			.addText((t) =>
+				t
+					// eslint-disable-next-line obsidianmd/ui/sentence-case -- literal format, not prose
+					.setPlaceholder('owner/name')
+					.setValue(s.githubRepo)
+					.onChange(async (value) => {
+						s.githubRepo = value.trim();
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl).setName('Branch').addText((t) =>
+			t
+				// eslint-disable-next-line obsidianmd/ui/sentence-case -- literal branch name
+				.setPlaceholder('main')
+				.setValue(s.githubBranch)
+				.onChange(async (value) => {
+					s.githubBranch = value.trim() || 'main';
+					await this.plugin.saveSettings();
+				}),
+		);
+
+		new Setting(containerEl)
+			.setName('Original file suffix')
+			.setDesc(
+				'The GitHub original is kept next to the note under this name, e.g. Final.original.md. You can open and edit it by hand.',
+			)
+			.addText((t) =>
+				t
+					.setPlaceholder('.original.md')
+					.setValue(s.originalSuffix)
+					.onChange(async (value) => {
+						const v = value.trim();
+						s.originalSuffix = v && v !== '.md' ? v : '.original.md';
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Keep a change log')
+			.setDesc(
+				'After each push, append the commit message and the changes (in CriticMarkup) to a "{note} Changes" note next to the note.',
+			)
+			.addToggle((t) =>
+				t.setValue(s.changeLog).onChange(async (value) => {
+					s.changeLog = value;
 					await this.plugin.saveSettings();
 				}),
 			);

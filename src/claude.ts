@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { requestUrl } from 'obsidian';
 import { makeRequestFetch } from './core/fetch-adapter';
 import { READ_SCHEMA, parseReadResult } from './core/schema';
-import { SYSTEM_PROMPT, userPrompt } from './core/prompt';
+import { COMMIT_SYSTEM, SYSTEM_PROMPT, commitPrompt, userPrompt } from './core/prompt';
 import type { ReadResult } from './core/types';
 import type { Effort } from './settings';
 
@@ -111,6 +111,57 @@ export async function readMarkup(opts: ReadOptions): Promise<ReadOutcome> {
 			.map((b) => b.text)
 			.join('');
 		return { ...parseReadResult(text), usage: describeUsage(message.usage) };
+	} catch (e) {
+		throw friendlyError(e);
+	}
+}
+
+export interface CommitOptions {
+	apiKey: string;
+	model: string;
+	noteName: string;
+	/** e.g. "+12 words, −3 words, 1 move". */
+	stats: string;
+	/** The changed passages in CriticMarkup, one per paragraph, with line numbers. */
+	changes: string;
+	signal?: AbortSignal;
+}
+
+/** Draft a commit message for the tracked edits. A short task, so low effort. */
+export async function draftCommitMessage(opts: CommitOptions): Promise<string> {
+	const client = new Anthropic({
+		apiKey: opts.apiKey,
+		dangerouslyAllowBrowser: true,
+		fetch: makeRequestFetch(requestUrl),
+	});
+	const useFallback = FALLBACK_MODELS.has(opts.model);
+	try {
+		const message = await client.beta.messages.create(
+			{
+				model: opts.model,
+				max_tokens: 16000,
+				output_config: { effort: 'low' },
+				system: [{ type: 'text', text: COMMIT_SYSTEM }],
+				messages: [
+					{ role: 'user', content: commitPrompt(opts.noteName, opts.stats, opts.changes) },
+				],
+				...(useFallback
+					? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const }
+					: {}),
+			},
+			{ signal: opts.signal },
+		);
+		if (message.stop_reason === 'refusal') {
+			const category = message.stop_details?.category ?? 'unspecified';
+			throw new Error(`Claude declined this request (category: ${category}).`);
+		}
+		const text = message.content
+			.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
+			.map((b) => b.text)
+			.join('')
+			.trim();
+		if (!text) throw new Error('Claude returned an empty message.');
+		return text;
 	} catch (e) {
 		throw friendlyError(e);
 	}

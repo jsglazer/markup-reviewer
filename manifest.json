@@ -1,9 +1,9 @@
 {
 	"id": "markup-reviewer",
 	"name": "Markup Reviewer",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.11.4",
-	"description": "Read handwritten pen markup from a scanned PDF with Claude, then implement or skip each edit from a side panel, with GitHub-style inline diffs and multi-level undo.",
+	"description": "Read handwritten pen markup from a scanned PDF with Claude and implement each edit from a side panel, or track your own edits against the GitHub copy and push them with a Claude-drafted commit message.",
 	"author": "Josh Glazer",
 	"authorUrl": "https://github.com/jsglazer",
 	"isDesktopOnly": false

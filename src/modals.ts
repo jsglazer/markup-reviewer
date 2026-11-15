@@ -1,4 +1,12 @@
-import { App, FuzzySuggestModal, Modal, Setting, TFile, type FuzzyMatch } from 'obsidian';
+import {
+	App,
+	FuzzySuggestModal,
+	Modal,
+	Setting,
+	TFile,
+	type ButtonComponent,
+	type FuzzyMatch,
+} from 'obsidian';
 
 export interface PickedPdf {
 	name: string;
@@ -148,5 +156,133 @@ export function confirm(app: App, title: string, body: string, yes: string): Pro
 			if (!answered) resolve(false);
 		};
 		modal.open();
+	});
+}
+
+/** Ask for one line of text. Resolves null on cancel. */
+export function promptText(
+	app: App,
+	title: string,
+	body: string,
+	initial: string,
+	yes: string,
+): Promise<string | null> {
+	return new Promise((resolve) => {
+		let answered = false;
+		const modal = new Modal(app);
+		modal.setTitle(title);
+		modal.contentEl.createEl('p', { text: body });
+		const input = modal.contentEl.createEl('input', {
+			type: 'text',
+			cls: 'markup-reviewer-prompt-input',
+			value: initial,
+		});
+		const finish = (): void => {
+			answered = true;
+			resolve(input.value.trim());
+			modal.close();
+		};
+		input.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				finish();
+			}
+		});
+		new Setting(modal.contentEl)
+			.addButton((b) => b.setButtonText(yes).setCta().onClick(finish))
+			.addButton((b) => b.setButtonText('Cancel').onClick(() => modal.close()));
+		modal.onClose = () => {
+			if (!answered) resolve(null);
+		};
+		modal.open();
+		input.focus();
+		input.select();
+	});
+}
+
+export interface CommitPromptOptions {
+	noteName: string;
+	repoPath: string;
+	stats: string;
+	/** Claude's draft; the box shows a placeholder until it arrives. */
+	draft: Promise<string>;
+	/** Used when Claude can't draft a message. */
+	fallback: string;
+	/** Aborted when the popup closes before the draft arrives. */
+	abort: AbortController;
+}
+
+/**
+ * The commit popup: Claude's draft in an editable box, Approve and push or
+ * Cancel. Nothing is pushed unless the user approves. Resolves the final
+ * message, or null on cancel.
+ */
+export function editCommitMessage(app: App, opts: CommitPromptOptions): Promise<string | null> {
+	return new Promise((resolve) => {
+		let answered = false;
+		let touched = false;
+		const modal = new Modal(app);
+		modal.setTitle('Commit and push');
+		modal.contentEl.addClass('markup-reviewer-commit');
+		modal.contentEl.createEl('p', {
+			text: `${opts.noteName} → ${opts.repoPath} (${opts.stats}). Edit the message if you like, then approve to push.`,
+		});
+		const status = modal.contentEl.createDiv({
+			cls: 'markup-reviewer-sub',
+			text: 'Claude is drafting a commit message…',
+		});
+		const box = modal.contentEl.createEl('textarea', { cls: 'markup-reviewer-commit-text' });
+		box.rows = 10;
+		box.placeholder = 'Claude is drafting a commit message, or type your own.';
+		let approve: ButtonComponent | null = null;
+		box.addEventListener('input', () => {
+			touched = true;
+			approve?.setDisabled(box.value.trim() === '');
+		});
+
+		const finish = (): void => {
+			const msg = box.value.trim();
+			if (!msg) return;
+			answered = true;
+			resolve(msg);
+			modal.close();
+		};
+		box.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+				e.preventDefault();
+				finish();
+			}
+		});
+		new Setting(modal.contentEl)
+			.addButton((b) => {
+				approve = b;
+				b.setButtonText('Approve and push').setCta().setDisabled(true).onClick(finish);
+			})
+			.addButton((b) => b.setButtonText('Cancel').onClick(() => modal.close()));
+
+		opts.draft.then(
+			(text) => {
+				status.setText('Drafted by Claude. Edit it as needed.');
+				if (!touched) box.value = text;
+				approve?.setDisabled(box.value.trim() === '');
+			},
+			(e: unknown) => {
+				const msg = e instanceof Error ? e.message : String(e);
+				if (answered || msg === 'Cancelled.') return;
+				status.setText(
+					`Claude couldn't draft a message: ${msg} A default message is filled in instead.`,
+				);
+				status.addClass('mod-warning');
+				if (!touched) box.value = opts.fallback;
+				approve?.setDisabled(box.value.trim() === '');
+			},
+		);
+
+		modal.onClose = () => {
+			opts.abort.abort();
+			if (!answered) resolve(null);
+		};
+		modal.open();
+		box.focus();
 	});
 }
