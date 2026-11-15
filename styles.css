@@ -8,7 +8,7 @@ body {
 	--markup-reviewer-focus-bg: rgba(212, 167, 44, 0.28);
 	--markup-reviewer-track-del: #cf222e;
 	--markup-reviewer-track-add: #319a50;
-	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.04); /* about #F5FDF6 over white */
+	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.04); /* about #F5FCF5 over white */
 	--markup-reviewer-track-move: #8250df;
 	--markup-reviewer-track-move-bg: rgba(130, 80, 223, 0.12);
 }
@@ -21,7 +21,7 @@ body {
 	--markup-reviewer-focus-bg: rgba(187, 128, 9, 0.3);
 	--markup-reviewer-track-del: #ff7b72;
 	--markup-reviewer-track-add: #319a50;
-	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.04); /* about #F5FDF6 over white */
+	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.04); /* about #F5FCF5 over white */
 	--markup-reviewer-track-move: #bc8cff;
 	--markup-reviewer-track-move-bg: rgba(188, 140, 255, 0.14);
 }
