@@ -238,6 +238,7 @@ export class EditTracker {
 	}
 
 	private updateStatus(): void {
+		this.plugin.refreshTrackBar();
 		const el = this.statusEl;
 		if (!el) return;
 		el.empty();

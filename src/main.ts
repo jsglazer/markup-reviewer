@@ -175,6 +175,11 @@ export default class MarkupReviewerPlugin extends Plugin {
 		this.view()?.refresh();
 	}
 
+	/** Redraw the panel's tracking buttons (active note or tracking state changed). */
+	refreshTrackBar(): void {
+		this.view()?.renderTrackBar();
+	}
+
 	activeSession(): ReviewSession | null {
 		return this.activePath ? (this.settings.sessions[this.activePath] ?? null) : null;
 	}

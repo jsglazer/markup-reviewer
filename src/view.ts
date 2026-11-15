@@ -17,6 +17,7 @@ import { revertRange, type WriteRecord } from './core/history';
 import type { ReviewEdit, ReviewSession } from './core/types';
 import { addTrailMark, clearDiffMarks, removeTrailMark, showPreview } from './cm-diff';
 import { confirm } from './modals';
+import type { TrackMode } from './cm-diff';
 import type MarkupReviewerPlugin from './main';
 
 export const VIEW_TYPE = 'markup-reviewer-panel';
@@ -44,6 +45,12 @@ export class MarkupReviewView extends ItemView {
 	private error: string | null = null;
 	private selectedId: string | null = null;
 	private readonly refreshSoon = debounce(() => this.refresh(), 300, true);
+	/** The tracking buttons at the top; re-rendered on their own so typing in a card isn't interrupted. */
+	private barEl: HTMLElement | null = null;
+	/** Everything below the tracking buttons: the review itself. */
+	private bodyEl: HTMLElement | null = null;
+	/** True while a Start/Stop/Done from the bar is running, so redraws keep its buttons disabled. */
+	private trackRunning = false;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -67,7 +74,7 @@ export class MarkupReviewView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
-		this.contentEl.addClass('markup-reviewer');
+		this.ensureLayout();
 		this.registerEvent(
 			this.app.workspace.on('editor-change', (_editor, info) => {
 				if (this.session && info.file?.path === this.session.notePath) this.refreshSoon();
@@ -351,8 +358,85 @@ export class MarkupReviewView extends ItemView {
 
 	// ── Rendering ───────────────────────────────────────────────────────
 
+	private ensureLayout(): { bar: HTMLElement; body: HTMLElement } {
+		if (!this.barEl || !this.bodyEl || !this.contentEl.contains(this.bodyEl)) {
+			this.contentEl.empty();
+			this.contentEl.addClass('markup-reviewer');
+			this.barEl = this.contentEl.createDiv('markup-reviewer-track');
+			this.bodyEl = this.contentEl.createDiv('markup-reviewer-body');
+			this.renderTrackBar();
+		}
+		return { bar: this.barEl, body: this.bodyEl };
+	}
+
+	/**
+	 * Tracking controls for the active note. Row 1: Start | Stop | Done, shaded
+	 * light green while the note is tracked and light red when it isn't.
+	 * Row 2: Orig | Mark | Final, with the current display highlighted.
+	 */
+	renderTrackBar(): void {
+		const bar = this.barEl;
+		if (!bar) {
+			this.ensureLayout();
+			return;
+		}
+		bar.empty();
+		const tracker = this.plugin.tracker;
+		const active = this.app.workspace.getActiveFile();
+		const file = active && active.extension === 'md' ? active : null;
+		const tracked = !!file && tracker.isTracked(file.path);
+
+		bar.createDiv({
+			cls: 'markup-reviewer-track-title',
+			text: file
+				? `${file.basename} · ${tracked ? 'tracking edits' : 'not tracking'}`
+				: 'Open a note to track its edits',
+		});
+
+		const actions = bar.createDiv('markup-reviewer-track-row markup-reviewer-track-actions');
+		if (file) actions.addClass(tracked ? 'is-tracking' : 'is-stopped');
+		const buttons: HTMLButtonElement[] = [];
+		const action = (
+			label: string,
+			aria: string,
+			enabled: boolean,
+			run: (f: TFile) => Promise<void>,
+		): void => {
+			const b = actions.createEl('button', { text: label, attr: { 'aria-label': aria } });
+			b.disabled = !enabled || this.trackRunning;
+			buttons.push(b);
+			b.onclick = async () => {
+				if (!file || this.trackRunning) return;
+				this.trackRunning = true;
+				for (const x of buttons) x.disabled = true;
+				try {
+					await run(file);
+				} finally {
+					this.trackRunning = false;
+					this.renderTrackBar();
+				}
+			};
+		};
+		action('Start', 'Start tracking edits in this note', !!file && !tracked, (f) =>
+			tracker.start(f),
+		);
+		action('Stop', 'Stop tracking edits in this note', tracked, (f) => tracker.stop(f));
+		action('Done', 'Done: commit and push to GitHub', tracked, (f) => tracker.done(f));
+
+		const modes = bar.createDiv('markup-reviewer-track-row markup-reviewer-track-modes');
+		const mode = (label: string, aria: string, m: TrackMode): void => {
+			const b = modes.createEl('button', { text: label, attr: { 'aria-label': aria } });
+			if (tracker.mode === m) b.addClass('is-active');
+			b.disabled = !tracked;
+			b.onclick = () => void tracker.setMode(m);
+		};
+		mode('Orig', 'Show the original (read-only)', 'original');
+		mode('Mark', 'Show the markup', 'markup');
+		mode('Final', 'Show the final text', 'final');
+	}
+
 	render(): void {
-		const root = this.contentEl;
+		const root = this.ensureLayout().body;
 		root.empty();
 		const s = this.session;
 

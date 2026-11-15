@@ -40,8 +40,10 @@ Markup Reviewer can also track edits you make by hand, show them as you type, an
    - deletions: red text with a red strikethrough
    - additions: green text
    - moves and pasted copies: purple, with a purple marker (↱ or ⧉) where the text came from; click the marker to jump to where it went
-5. Switch the display between **Original**, **Markup** and **Final** from the status bar, the commands, or the compare button in the note's header. The Original view is read-only.
+5. Switch the display between **Original**, **Markup** and **Final** from the status bar, the commands, the compare button in the note's header, or the review panel's buttons. The Original view is read-only.
 6. When you're done, click **Push** in the status bar (or the upload button in the note's header, or **Done: commit and push to GitHub**). Markup Reviewer checks that the GitHub copy hasn't changed since you started, has Claude draft a commit message, and shows it in a popup you can edit. Nothing is pushed until you click **Approve and push**. Then it stamps `pushed:` (YYYYMMDD-HHMMSS), pushes the note, and makes the pushed version the new original.
+
+The top of the review panel (**Open review panel**) has buttons for the active note: **Start | Stop | Done** on the first row, shaded light green while the note is being tracked and light red when it isn't, and **Orig | Mark | Final** on the second, with the current display highlighted.
 
 Your text is always in the note itself and saved by Obsidian as usual; the marks are only drawn on screen and are recalculated from the note and the original, so they survive undo, reloads and edits made elsewhere. Nothing is written into the note except the `git:` and `pushed:` fields. **Stop tracking edits in this note** clears the marks and moves the copy of the original to the trash; the note and GitHub are untouched.
 

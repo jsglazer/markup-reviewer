@@ -154,6 +154,48 @@ body {
 	color: var(--text-warning);
 }
 
+/* ── Tracking buttons at the top of the panel ────────────────── */
+
+.markup-reviewer-track {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+	padding-bottom: var(--size-4-2);
+	margin-bottom: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.markup-reviewer-track-title {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.markup-reviewer-track-row {
+	display: flex;
+	gap: var(--size-4-1);
+	padding: var(--size-4-1);
+	border-radius: var(--radius-m);
+}
+
+.markup-reviewer-track-row button {
+	flex: 1;
+	font-size: var(--font-ui-small);
+}
+
+/* Row 1 is shaded light green while tracking, light red when stopped. */
+.markup-reviewer-track-actions.is-tracking {
+	background-color: rgba(46, 160, 67, 0.18);
+}
+
+.markup-reviewer-track-actions.is-stopped {
+	background-color: rgba(248, 81, 73, 0.16);
+}
+
+.markup-reviewer-track-modes button.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
 /* ── Panel ───────────────────────────────────────────────────── */
 
 .markup-reviewer {
