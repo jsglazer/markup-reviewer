@@ -69,6 +69,24 @@ export class EditTracker {
 			if (this.timer !== null) window.clearTimeout(this.timer);
 		});
 
+		// Obsidian handles pastes and drops itself, and the text it inserts doesn't
+		// carry CodeMirror's paste label, so take the text from Obsidian's own
+		// events too. They fire for every paste or drop, whatever the display mode.
+		p.registerEvent(
+			// eslint-disable-next-line obsidianmd/editor-drop-paste -- only observes the text; the paste must go ahead unchanged
+			this.app.workspace.on('editor-paste', (evt, _editor, info) => {
+				const text = evt.clipboardData?.getData('text/plain');
+				if (text) this.recordPastes(info.file?.path, [text]);
+			}),
+		);
+		p.registerEvent(
+			// eslint-disable-next-line obsidianmd/editor-drop-paste -- only observes the text; the paste must go ahead unchanged
+			this.app.workspace.on('editor-drop', (evt, _editor, info) => {
+				const text = evt.dataTransfer?.getData('text/plain');
+				if (text) this.recordPastes(info.file?.path, [text]);
+			}),
+		);
+
 		p.registerEvent(
 			this.app.workspace.on('editor-change', (_editor, info) => {
 				const path = info.file?.path;
@@ -290,9 +308,14 @@ export class EditTracker {
 		push.addEventListener('click', () => void this.done(file));
 	}
 
+	/** A paste, drop or drag-move seen by CodeMirror (e.g. Virtual Outliner's outline drags). */
 	private onPaste(view: EditorView, texts: string[]): void {
 		const mv = this.markdownViews().find((m) => viewOf(m.editor) === view);
-		const path = mv?.file?.path;
+		this.recordPastes(mv?.file?.path, texts);
+	}
+
+	/** Remember pasted or dropped texts as hints for spotting moves and copies. */
+	private recordPastes(path: string | undefined, texts: string[]): void {
 		const st = path ? this.settings.tracking[path] : undefined;
 		if (!st) return;
 		for (const t of texts) if (t.trim().length >= 3) st.pastes.push(t);
