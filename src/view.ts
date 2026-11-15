@@ -383,17 +383,31 @@ export class MarkupReviewView extends ItemView {
 		bar.empty();
 		const tracker = this.plugin.tracker;
 		const active = this.app.workspace.getActiveFile();
-		const file = active && active.extension === 'md' ? active : null;
-		const tracked = !!file && tracker.isTracked(file.path);
+		const activeNote = active && active.extension === 'md' ? active : null;
+		// Locked onto the tracked note until Done or Stop; otherwise the active note.
+		const locked = tracker.lockedFile();
+		const file = locked ?? activeNote;
+		const tracked = !!locked;
 
 		const title = bar.createDiv('markup-reviewer-track-title');
 		if (file) {
-			title.createSpan({ cls: 'markup-reviewer-track-file', text: file.basename });
+			const name = title.createSpan({ cls: 'markup-reviewer-track-file', text: file.basename });
+			if (locked) {
+				name.addClass('is-link');
+				name.setAttribute('aria-label', `Open ${file.name}`);
+				name.onclick = () => void this.app.workspace.openLinkText(file.path, '', false);
+			}
 			title.appendText(' · ');
 			title.createSpan({
 				cls: tracked ? 'markup-reviewer-track-state is-tracking' : 'markup-reviewer-track-state',
 				text: tracked ? 'Tracking edits' : 'Not tracking',
 			});
+			if (locked && activeNote && activeNote.path !== locked.path) {
+				bar.createDiv({
+					cls: 'markup-reviewer-track-warn',
+					text: `You're in ${activeNote.name}: edits here aren't tracked. The buttons act on ${locked.name}.`,
+				});
+			}
 		} else {
 			title.setText('Open a note to track its edits');
 		}

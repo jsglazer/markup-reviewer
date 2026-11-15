@@ -105,13 +105,25 @@ export default class MarkupReviewerPlugin extends Plugin {
 			void fn(file);
 		};
 
+		// Done and Stop act on the tracked note, whichever note is active.
+		const withLocked = (fn: (file: TFile) => Promise<void>) => (): void => {
+			const locked = this.tracker.lockedFile();
+			if (locked) void fn(locked);
+			else withNote(fn)();
+		};
+
 		this.addRibbonIcon('git-compare', 'Track edits, or commit and push them', () => {
+			const locked = this.tracker.lockedFile();
+			if (locked) {
+				void this.tracker.done(locked);
+				return;
+			}
 			const file = this.activeNote();
 			if (!file) {
 				new Notice('Open the note first.');
 				return;
 			}
-			void (this.tracker.isTracked(file.path) ? this.tracker.done(file) : this.tracker.start(file));
+			void this.tracker.start(file);
 		});
 
 		this.addCommand({
@@ -122,12 +134,12 @@ export default class MarkupReviewerPlugin extends Plugin {
 		this.addCommand({
 			id: 'track-done',
 			name: 'Done: commit and push to GitHub',
-			callback: withNote((f) => this.tracker.done(f)),
+			callback: withLocked((f) => this.tracker.done(f)),
 		});
 		this.addCommand({
 			id: 'track-stop',
 			name: 'Stop tracking edits in this note',
-			callback: withNote((f) => this.tracker.stop(f)),
+			callback: withLocked((f) => this.tracker.stop(f)),
 		});
 		this.addCommand({
 			id: 'track-cycle',

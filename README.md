@@ -41,9 +41,9 @@ Markup Reviewer can also track edits you make by hand, show them as you type, an
    - additions: green text
    - moves and pasted copies: purple, with a purple marker (↱ or ⧉) where the text came from; click the marker to jump to where it went
 5. Switch the display between **Original**, **Markup** and **Final** from the status bar, the commands, the compare button in the note's header, or the review panel's buttons. The Original view is read-only.
-6. When you're done, click **Push** in the status bar (or the upload button in the note's header, or **Done: commit and push to GitHub**). Markup Reviewer checks that the GitHub copy hasn't changed since you started, has Claude draft a commit message, and shows it in a popup you can edit. Nothing is pushed until you click **Approve and push**. Then it stamps `pushed:` (YYYYMMDD-HHMMSS), pushes the note, and makes the pushed version the new original.
+6. When you're done, click **Push** in the status bar (or the upload button in the note's header, or **Done: commit and push to GitHub**). Markup Reviewer checks that the GitHub copy hasn't changed since you started, has Claude draft a commit message, and shows it in a popup you can edit. Nothing is pushed until you click **Approve and push**. Then it stamps `pushed:` (YYYYMMDD-HHMMSS), pushes the note, and ends tracking: the marks clear and the copy of the original goes to the trash. Click **Start** again to keep editing with marks; the version you just pushed becomes the new original.
 
-The top of the review panel (**Open review panel**) has buttons for the active note: **Start | Stop | Done** on the first row, shaded light green while the note is being tracked and light red when it isn't, and **Orig | Mark | Final** on the second, with the current display highlighted.
+One note is tracked at a time. The top of the review panel (**Open review panel**) locks onto the tracked note until you click **Done** or **Stop**: its name stays at the top (click it to open the note), the buttons act on it whichever note you're in, and if you click into another note the panel warns that edits there aren't tracked. When nothing is tracked the panel follows the active note. The buttons are **Start | Stop | Done** on the first row, shaded light green while the note is being tracked and light red when it isn't, and **Orig | Mark | Final** on the second, with the current display highlighted.
 
 Your text is always in the note itself and saved by Obsidian as usual; the marks are only drawn on screen and are recalculated from the note and the original, so they survive undo, reloads and edits made elsewhere. Nothing is written into the note except the `git:` and `pushed:` fields. **Stop tracking edits in this note** clears the marks and moves the copy of the original to the trash; the note and GitHub are untouched.
 
@@ -68,9 +68,9 @@ All commands appear in the command palette prefixed with **Markup Reviewer:**, a
 
 | Command | What it does |
 |---|---|
-| Start tracking edits in this note | Fetch the GitHub copy as the original (pushing the note first if it isn't on GitHub) and start showing your edits. Also the compare icon in the ribbon when the note isn't tracked. |
-| Done: commit and push to GitHub | Check the GitHub copy is unchanged, show Claude's draft commit message for you to edit or approve, stamp `pushed:` and push. Also the status bar's Push button, the upload button in the note's header, and the ribbon's compare icon on a tracked note. |
-| Stop tracking edits in this note | Clear the marks and move the copy of the original to the trash; the note and GitHub are unchanged. |
+| Start tracking edits in this note | Fetch the GitHub copy as the original (pushing the note first if it isn't on GitHub) and start showing your edits. One note at a time: finish the tracked note with Done or Stop first. Also the compare icon in the ribbon when nothing is tracked. |
+| Done: commit and push to GitHub | Acts on the tracked note from anywhere. Check the GitHub copy is unchanged, show Claude's draft commit message for you to edit or approve, stamp `pushed:`, push, and end tracking. Also the status bar's Push button, the upload button in the note's header, and the ribbon's compare icon while a note is tracked. |
+| Stop tracking edits in this note | Acts on the tracked note from anywhere. Clear the marks, unlock the panel and move the copy of the original to the trash; the note and GitHub are unchanged. |
 | Cycle display: original, markup, final | Switch to the next display mode. Also the compare button in the note's header. |
 | Show the original | Show the text as it is on GitHub: additions hidden, deletions shown as plain text. The note is read-only in this view. |
 | Show the markup | Show your edits: red struck deletions, green additions, purple moves and copies. |

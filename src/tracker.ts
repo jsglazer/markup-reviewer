@@ -138,6 +138,18 @@ export class EditTracker {
 		}
 	}
 
+	/**
+	 * The note being tracked. Only one note is tracked at a time: the panel and
+	 * Done / Stop lock onto it until the session ends, whichever note is active.
+	 */
+	lockedFile(): TFile | null {
+		for (const path of Object.keys(this.settings.tracking)) {
+			const f = this.app.vault.getFileByPath(path);
+			if (f) return f;
+		}
+		return null;
+	}
+
 	isTracked(path: string | undefined | null): boolean {
 		return !!path && !!this.settings.tracking[path];
 	}
@@ -385,6 +397,13 @@ export class EditTracker {
 			this.refreshAll();
 			return;
 		}
+		const locked = this.lockedFile();
+		if (locked) {
+			new Notice(
+				`Markup Reviewer: already tracking ${locked.name}. Click Done or Stop on it before tracking another note.`,
+			);
+			return;
+		}
 		const cfg = this.githubConfig();
 		if (!cfg || this.busy.has(file.path)) return;
 		this.busy.add(file.path);
@@ -450,7 +469,7 @@ export class EditTracker {
 		}
 	}
 
-	/** Done: check GitHub, draft a commit message for approval, stamp and push. */
+	/** Done: check GitHub, draft a commit message for approval, stamp, push, and end tracking. */
 	async done(file: TFile): Promise<void> {
 		const st = this.settings.tracking[file.path];
 		if (!st) {
@@ -524,13 +543,11 @@ export class EditTracker {
 			const res = await this.pushNote(file, cfg, st.repoPath, message, remoteSha);
 			if (!res) return;
 
-			await this.writeOriginal(file, res.text);
-			st.sha = res.sha;
-			st.pastes = [];
-			await this.plugin.saveSettings();
 			if (this.settings.changeLog) await this.appendChangeLog(file, message, res.sha, excerpts);
-			this.refreshAll();
-			new Notice(`Markup Reviewer: pushed ${file.name} to ${cfg.repo} (${shortSha(res.sha)}).`);
+			await this.endTracking(file);
+			new Notice(
+				`Markup Reviewer: pushed ${file.name} to ${cfg.repo} (${shortSha(res.sha)}). Tracking ended.`,
+			);
 		} finally {
 			this.busy.delete(file.path);
 		}
@@ -550,10 +567,15 @@ export class EditTracker {
 			'Stop tracking',
 		);
 		if (!ok) return;
+		await this.endTracking(file);
+	}
+
+	/** End the session: forget the note, clear its marks, unlock the panel, trash the copy of the original. */
+	private async endTracking(file: TFile): Promise<void> {
 		delete this.settings.tracking[file.path];
 		this.originals.delete(file.path);
 		await this.plugin.saveSettings();
-		const side = this.app.vault.getFileByPath(sidePath);
+		const side = this.app.vault.getFileByPath(sidecarPath(file.path, this.settings.originalSuffix));
 		if (side) await this.app.fileManager.trashFile(side);
 		this.refreshAll();
 	}
