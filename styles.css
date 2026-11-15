@@ -8,7 +8,7 @@ body {
 	--markup-reviewer-focus-bg: rgba(212, 167, 44, 0.28);
 	--markup-reviewer-track-del: #cf222e;
 	--markup-reviewer-track-add: #319a50;
-	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.063); /* #EFFBF0 over white */
+	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.04); /* about #F5FDF6 over white */
 	--markup-reviewer-track-move: #8250df;
 	--markup-reviewer-track-move-bg: rgba(130, 80, 223, 0.12);
 }
@@ -21,7 +21,7 @@ body {
 	--markup-reviewer-focus-bg: rgba(187, 128, 9, 0.3);
 	--markup-reviewer-track-del: #ff7b72;
 	--markup-reviewer-track-add: #319a50;
-	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.063); /* #EFFBF0 over white */
+	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.04); /* about #F5FDF6 over white */
 	--markup-reviewer-track-move: #bc8cff;
 	--markup-reviewer-track-move-bg: rgba(188, 140, 255, 0.14);
 }
@@ -160,7 +160,8 @@ body {
 	color: var(--text-warning);
 }
 
-/* The tab of a note whose edits are being tracked gets a red title and icon.
+/* The tab of a note whose edits are being tracked gets a red title and icon
+   on a light red background.
    The title uses -webkit-text-fill-color, which paints over `color`: other
    plugins (e.g. File and Folder Highlighter) set the title's colour as an
    inline !important style that no stylesheet rule can beat, but they don't
@@ -173,6 +174,22 @@ body {
 
 .workspace-tab-header.markup-reviewer-tracked-tab .workspace-tab-header-inner-icon {
 	color: var(--text-error);
+}
+
+/* Light red tab background. The whole tab gets it directly; the title also gets
+   it as an inset shadow, which is drawn above the element's own background, so
+   it covers a background colour another plugin sets inline with !important. */
+.workspace-tab-header.markup-reviewer-tracked-tab {
+	--markup-reviewer-tab-bg: color-mix(in srgb, var(--text-error) 16%, var(--background-primary));
+}
+
+.workspace-tab-header.markup-reviewer-tracked-tab .workspace-tab-header-inner {
+	background-color: var(--markup-reviewer-tab-bg);
+	border-radius: var(--radius-m) var(--radius-m) 0 0;
+}
+
+.workspace-tab-header.markup-reviewer-tracked-tab .workspace-tab-header-inner-title {
+	box-shadow: inset 0 0 0 100vmax var(--markup-reviewer-tab-bg);
 }
 
 /* ── Tracking buttons at the top of the panel ────────────────── */

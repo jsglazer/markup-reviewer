@@ -1,6 +1,6 @@
 {
 	"name": "markup-reviewer",
-	"version": "1.0.12",
+	"version": "1.0.13",
 	"description": "Read handwritten pen markup from a scanned PDF with Claude and apply each edit to the source note from an Obsidian side panel",
 	"main": "main.js",
 	"scripts": {
