@@ -160,12 +160,7 @@ body {
 	color: var(--text-warning);
 }
 
-/* The tab of a note whose edits are being tracked turns red. */
-.workspace-tab-header.markup-reviewer-tracked-tab {
-	background-color: rgba(248, 81, 73, 0.18);
-	border-radius: var(--radius-m) var(--radius-m) 0 0;
-}
-
+/* The tab of a note whose edits are being tracked gets a red title and icon. */
 .workspace-tab-header.markup-reviewer-tracked-tab .workspace-tab-header-inner-title,
 .workspace-tab-header.markup-reviewer-tracked-tab .workspace-tab-header-inner-icon {
 	color: var(--text-error);
