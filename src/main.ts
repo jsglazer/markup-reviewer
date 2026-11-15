@@ -46,8 +46,8 @@ export default class MarkupReviewerPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'open-panel',
-			name: 'Open review panel',
-			callback: () => void this.openPanel(),
+			name: 'Toggle review panel',
+			callback: () => void this.togglePanel(),
 		});
 
 		this.addCommand({
@@ -206,6 +206,16 @@ export default class MarkupReviewerPlugin extends Plugin {
 	private view(): MarkupReviewView | null {
 		const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE)[0];
 		return leaf?.view instanceof MarkupReviewView ? leaf.view : null;
+	}
+
+	/** Close the review panel if it's showing; otherwise open (or reveal) it. */
+	private async togglePanel(): Promise<void> {
+		const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE)[0];
+		if (leaf && leaf.view.containerEl.isShown()) {
+			leaf.detach();
+			return;
+		}
+		await this.openPanel();
 	}
 
 	private async openPanel(): Promise<MarkupReviewView | null> {

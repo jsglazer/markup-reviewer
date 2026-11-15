@@ -43,7 +43,7 @@ Markup Reviewer can also track edits you make by hand, show them as you type, an
 5. Switch the display between **Original**, **Markup** and **Final** from the status bar, the commands, the compare button in the note's header, or the review panel's buttons. The Original view is read-only.
 6. When you're done, click **Push** in the status bar (or the upload button in the note's header, or **Done: commit and push to GitHub**). Markup Reviewer checks that the GitHub copy hasn't changed since you started, has Claude draft a commit message, and shows it in a popup you can edit. Nothing is pushed until you click **Approve and push**. Then it stamps `pushed:` (YYYYMMDD-HHMMSS), pushes the note, and ends tracking: the marks clear and the copy of the original goes to the trash. Click **Start** again to keep editing with marks; the version you just pushed becomes the new original.
 
-One note is tracked at a time. The top of the review panel (**Open review panel**) locks onto the tracked note until you click **Done** or **Stop**: its name stays at the top (click it to open the note), the buttons act on it whichever note you're in, and if you click into another note the panel warns that edits there aren't tracked. When nothing is tracked the panel follows the active note. The buttons are **Start | Stop | Done** on the first row, shaded light green while the note is being tracked and light red when it isn't, and **Orig | Mark | Final** on the second, with the current display highlighted.
+One note is tracked at a time. The top of the review panel (**Toggle review panel**) locks onto the tracked note until you click **Done** or **Stop**: its name stays at the top (click it to open the note), the buttons act on it whichever note you're in, and if you click into another note the panel warns that edits there aren't tracked. When nothing is tracked the panel follows the active note. While a note is tracked, its tab turns red. The buttons are **Start | Stop | Done** on the first row, shaded light green while the note is being tracked and light red when it isn't, and **Orig | Mark | Final** on the second, with the current display highlighted.
 
 Your text is always in the note itself and saved by Obsidian as usual; the marks are only drawn on screen and are recalculated from the note and the original, so they survive undo, reloads and edits made elsewhere. Nothing is written into the note except the `git:` and `pushed:` fields. **Stop tracking edits in this note** clears the marks and moves the copy of the original to the trash; the note and GitHub are untouched.
 
@@ -60,7 +60,7 @@ All commands appear in the command palette prefixed with **Markup Reviewer:**, a
 | Command | What it does |
 |---|---|
 | Review markup from a scanned PDF | Pick a scan of the open note; Claude reads the pen marks and opens one card per edit in the review panel. Offers to resume if the note already has a saved review. Also the pen icon in the ribbon. |
-| Open review panel | Show the review panel, with the open note's saved review if it has one. |
+| Toggle review panel | Close the review panel if it's showing; otherwise open it, with the open note's saved review if it has one. |
 | Undo last implement or skip | Step back through the panel's Implement and Skip actions, newest first. |
 | Clear diff highlights | Remove the green/red highlights left by implemented edits (display only; the note is unchanged). |
 

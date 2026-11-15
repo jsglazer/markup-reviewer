@@ -136,6 +136,7 @@ export class EditTracker {
 			}
 			for (const el of this.actions.get(mv) ?? []) el.remove();
 		}
+		this.markTabs(true);
 	}
 
 	/**
@@ -229,7 +230,23 @@ export class EditTracker {
 			else this.paint(mv, null);
 		}
 		for (const p of paths) void this.refreshPath(p);
+		this.markTabs();
 		this.updateStatus();
+	}
+
+	/**
+	 * Turn the tab of every pane showing the tracked note red. Uses the leaf's
+	 * tab header element, which Obsidian doesn't expose in its typings.
+	 */
+	private markTabs(clearAll = false): void {
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			const tab = (leaf as unknown as { tabHeaderEl?: HTMLElement }).tabHeaderEl;
+			if (!tab) return;
+			const v = leaf.view;
+			const tracked =
+				!clearAll && v instanceof MarkdownView && this.isTracked(v.file?.path ?? null);
+			tab.toggleClass('markup-reviewer-tracked-tab', tracked);
+		});
 	}
 
 	/** Header buttons on tracked notes: cycle the display, and Done. Also the mobile entry points. */
