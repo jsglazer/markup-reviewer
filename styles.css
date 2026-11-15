@@ -8,7 +8,7 @@ body {
 	--markup-reviewer-focus-bg: rgba(212, 167, 44, 0.28);
 	--markup-reviewer-track-del: #cf222e;
 	--markup-reviewer-track-add: #319a50;
-	--markup-reviewer-track-add-bg: #effbf0;
+	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.063); /* #EFFBF0 over white */
 	--markup-reviewer-track-move: #8250df;
 	--markup-reviewer-track-move-bg: rgba(130, 80, 223, 0.12);
 }
@@ -21,7 +21,7 @@ body {
 	--markup-reviewer-focus-bg: rgba(187, 128, 9, 0.3);
 	--markup-reviewer-track-del: #ff7b72;
 	--markup-reviewer-track-add: #319a50;
-	--markup-reviewer-track-add-bg: #effbf0;
+	--markup-reviewer-track-add-bg: rgba(0, 192, 17, 0.063); /* #EFFBF0 over white */
 	--markup-reviewer-track-move: #bc8cff;
 	--markup-reviewer-track-move-bg: rgba(188, 140, 255, 0.14);
 }
@@ -79,7 +79,9 @@ body {
 	white-space: pre-wrap;
 }
 
-/* Additions: green text on a very light green background. */
+/* Additions: green text on a very light green background. The background is
+   translucent so that, where a wrapped line's background overlaps the line
+   above, it can't hide that line's descenders (g, p, y). */
 .markup-reviewer-track-add {
 	color: var(--markup-reviewer-track-add);
 	background-color: var(--markup-reviewer-track-add-bg);
