@@ -386,12 +386,17 @@ export class MarkupReviewView extends ItemView {
 		const file = active && active.extension === 'md' ? active : null;
 		const tracked = !!file && tracker.isTracked(file.path);
 
-		bar.createDiv({
-			cls: 'markup-reviewer-track-title',
-			text: file
-				? `${file.basename} · ${tracked ? 'tracking edits' : 'not tracking'}`
-				: 'Open a note to track its edits',
-		});
+		const title = bar.createDiv('markup-reviewer-track-title');
+		if (file) {
+			title.createSpan({ cls: 'markup-reviewer-track-file', text: file.basename });
+			title.appendText(' · ');
+			title.createSpan({
+				cls: tracked ? 'markup-reviewer-track-state is-tracking' : 'markup-reviewer-track-state',
+				text: tracked ? 'Tracking edits' : 'Not tracking',
+			});
+		} else {
+			title.setText('Open a note to track its edits');
+		}
 
 		const actions = bar.createDiv('markup-reviewer-track-row markup-reviewer-track-actions');
 		if (file) actions.addClass(tracked ? 'is-tracking' : 'is-stopped');

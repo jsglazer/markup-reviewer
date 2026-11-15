@@ -176,6 +176,18 @@ body {
 	font-size: var(--font-ui-smaller);
 }
 
+/* The note's name: 50% larger than the rest of the line, bold. */
+.markup-reviewer-track-file {
+	font-size: 150%;
+	font-weight: var(--font-bold);
+	color: var(--text-normal);
+}
+
+.markup-reviewer-track-state.is-tracking {
+	color: var(--text-error);
+	font-weight: var(--font-semibold);
+}
+
 .markup-reviewer-track-row {
 	display: flex;
 	gap: var(--size-4-1);
