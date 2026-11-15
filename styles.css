@@ -160,11 +160,19 @@ body {
 	color: var(--text-warning);
 }
 
-/* The tab of a note whose edits are being tracked gets a red title and icon. */
-.workspace-tab-header.markup-reviewer-tracked-tab .workspace-tab-header-inner-title,
+/* The tab of a note whose edits are being tracked gets a red title and icon.
+   The title uses -webkit-text-fill-color, which paints over `color`: other
+   plugins (e.g. File and Folder Highlighter) set the title's colour as an
+   inline !important style that no stylesheet rule can beat, but they don't
+   set this property, so the red still shows while tracking. */
+.workspace-tab-header.markup-reviewer-tracked-tab .workspace-tab-header-inner-title {
+	color: var(--text-error);
+	-webkit-text-fill-color: var(--text-error);
+	font-weight: var(--font-semibold);
+}
+
 .workspace-tab-header.markup-reviewer-tracked-tab .workspace-tab-header-inner-icon {
 	color: var(--text-error);
-	font-weight: var(--font-semibold);
 }
 
 /* ── Tracking buttons at the top of the panel ────────────────── */
