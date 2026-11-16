@@ -159,45 +159,6 @@ export function confirm(app: App, title: string, body: string, yes: string): Pro
 	});
 }
 
-export interface ButtonChoice<T> {
-	text: string;
-	value: T;
-	cta?: boolean;
-	destructive?: boolean;
-}
-
-/** Ask the user to pick one of several buttons (plus Cancel). Resolves null on cancel or close. */
-export function choose<T>(
-	app: App,
-	title: string,
-	body: string,
-	choices: ButtonChoice<T>[],
-): Promise<T | null> {
-	return new Promise((resolve) => {
-		let answered = false;
-		const modal = new Modal(app);
-		modal.setTitle(title);
-		modal.contentEl.createEl('p', { text: body });
-		const row = new Setting(modal.contentEl);
-		for (const c of choices) {
-			row.addButton((b) => {
-				b.setButtonText(c.text).onClick(() => {
-					answered = true;
-					resolve(c.value);
-					modal.close();
-				});
-				if (c.cta) b.setCta();
-				if (c.destructive) b.buttonEl.addClass('mod-warning');
-			});
-		}
-		row.addButton((b) => b.setButtonText('Cancel').onClick(() => modal.close()));
-		modal.onClose = () => {
-			if (!answered) resolve(null);
-		};
-		modal.open();
-	});
-}
-
 /** Ask for one line of text. Resolves null on cancel. */
 export function promptText(
 	app: App,

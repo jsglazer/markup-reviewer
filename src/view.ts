@@ -49,7 +49,7 @@ export class MarkupReviewView extends ItemView {
 	private barEl: HTMLElement | null = null;
 	/** Everything below the tracking buttons: the review itself. */
 	private bodyEl: HTMLElement | null = null;
-	/** True while a Start/Stop/Done from the bar is running, so redraws keep its buttons disabled. */
+	/** True while a Start/Stop/Pause from the bar is running, so redraws keep its buttons disabled. */
 	private trackRunning = false;
 
 	constructor(
@@ -370,8 +370,9 @@ export class MarkupReviewView extends ItemView {
 	}
 
 	/**
-	 * Tracking controls for the active note. Row 1: Start | Stop | Done, shaded
-	 * light green while the note is tracked and light red when it isn't.
+	 * Tracking controls for the active note. Row 1: Start | Stop | Pause (Resume
+	 * while paused), shaded light green while the note is tracked, light amber
+	 * while paused and light red when it isn't tracked.
 	 * Row 2: Orig | Mark | Final, with the current display highlighted.
 	 */
 	renderTrackBar(): void {
@@ -384,10 +385,11 @@ export class MarkupReviewView extends ItemView {
 		const tracker = this.plugin.tracker;
 		const active = this.app.workspace.getActiveFile();
 		const activeNote = active && active.extension === 'md' ? active : null;
-		// Locked onto the tracked note until Done or Stop; otherwise the active note.
+		// Locked onto the tracked note (even while paused) until Stop or Discard; otherwise the active note.
 		const locked = tracker.lockedFile();
 		const file = locked ?? activeNote;
 		const tracked = !!locked;
+		const paused = !!locked && tracker.isPaused(locked.path);
 
 		const title = bar.createDiv('markup-reviewer-track-title');
 		if (file) {
@@ -399,8 +401,12 @@ export class MarkupReviewView extends ItemView {
 			}
 			title.appendText(' · ');
 			title.createSpan({
-				cls: tracked ? 'markup-reviewer-track-state is-tracking' : 'markup-reviewer-track-state',
-				text: tracked ? 'Tracking edits' : 'Not tracking',
+				cls: paused
+					? 'markup-reviewer-track-state is-paused'
+					: tracked
+						? 'markup-reviewer-track-state is-tracking'
+						: 'markup-reviewer-track-state',
+				text: paused ? 'Paused' : tracked ? 'Tracking edits' : 'Not tracking',
 			});
 			if (locked && activeNote && activeNote.path !== locked.path) {
 				bar.createDiv({
@@ -413,7 +419,7 @@ export class MarkupReviewView extends ItemView {
 		}
 
 		const actions = bar.createDiv('markup-reviewer-track-row markup-reviewer-track-actions');
-		if (file) actions.addClass(tracked ? 'is-tracking' : 'is-stopped');
+		if (file) actions.addClass(paused ? 'is-paused' : tracked ? 'is-tracking' : 'is-stopped');
 		const buttons: HTMLButtonElement[] = [];
 		const action = (
 			label: string,
@@ -439,14 +445,15 @@ export class MarkupReviewView extends ItemView {
 		action('Start', 'Start tracking edits in this note', !!file && !tracked, (f) =>
 			tracker.start(f),
 		);
-		action('Stop', 'Stop tracking edits in this note', tracked, (f) => tracker.stop(f));
-		action('Done', 'Done: commit and push to GitHub', tracked, (f) => tracker.done(f));
+		action('Stop', 'Stop: commit and push to GitHub', tracked, (f) => tracker.stop(f));
+		if (paused) action('Resume', 'Resume tracking', true, (f) => tracker.resume(f));
+		else action('Pause', 'Pause tracking without pushing', tracked, (f) => tracker.pause(f));
 
 		const modes = bar.createDiv('markup-reviewer-track-row markup-reviewer-track-modes');
 		const mode = (label: string, aria: string, m: TrackMode): void => {
 			const b = modes.createEl('button', { text: label, attr: { 'aria-label': aria } });
 			if (tracker.mode === m) b.addClass('is-active');
-			b.disabled = !tracked;
+			b.disabled = !tracked || paused;
 			b.onclick = () => void tracker.setMode(m);
 		};
 		mode('Orig', 'Show the original (read-only)', 'original');

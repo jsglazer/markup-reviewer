@@ -12,6 +12,8 @@ export interface TrackState {
 	startedAt: string;
 	/** Texts recently pasted or dropped into the note: hints for detecting moves. */
 	pastes: string[];
+	/** Paused: marks hidden and pastes not recorded; the original is kept and nothing is pushed. */
+	paused?: boolean;
 }
 
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';

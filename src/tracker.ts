@@ -2,7 +2,7 @@
  * Manual edit tracking: the note always holds your current text, the original
  * is the copy on GitHub (cached in a visible file next to the note), and the
  * red/green/purple marks are recomputed by comparing the two shortly after
- * every change. "Done" checks GitHub, has Claude draft a commit message for
+ * every change. "Stop" checks GitHub, has Claude draft a commit message for
  * you to edit or approve, stamps `pushed:`, and pushes the note.
  */
 import { MarkdownView, Notice, TFile, setIcon, type Editor } from 'obsidian';
@@ -13,7 +13,7 @@ import { getField, setField } from './core/frontmatter';
 import { isSidecar, pushedStamp, repoFilePath, sidecarPath } from './core/repo';
 import { computeMarks, criticExcerpts, describeStats, markStats, type Excerpt } from './core/track';
 import { getFile, putFile, type GitHubConfig } from './github';
-import { choose, confirm, editCommitMessage, promptText } from './modals';
+import { confirm, editCommitMessage, promptText } from './modals';
 import type MarkupReviewerPlugin from './main';
 
 const MODES: TrackMode[] = ['original', 'markup', 'final'];
@@ -159,7 +159,7 @@ export class EditTracker {
 
 	/**
 	 * The note being tracked. Only one note is tracked at a time: the panel and
-	 * Done / Stop lock onto it until the session ends, whichever note is active.
+	 * Stop / Pause / Discard lock onto it until the session ends, whichever note is active.
 	 */
 	lockedFile(): TFile | null {
 		for (const path of Object.keys(this.settings.tracking)) {
@@ -171,6 +171,15 @@ export class EditTracker {
 
 	isTracked(path: string | undefined | null): boolean {
 		return !!path && !!this.settings.tracking[path];
+	}
+
+	/** Tracked and not paused: marks drawn, pastes recorded, tab red. */
+	isActive(path: string | undefined | null): boolean {
+		return !!path && !!this.settings.tracking[path] && !this.settings.tracking[path].paused;
+	}
+
+	isPaused(path: string | undefined | null): boolean {
+		return !!path && !!this.settings.tracking[path]?.paused;
 	}
 
 	// ── Display ─────────────────────────────────────────────────────────
@@ -213,7 +222,7 @@ export class EditTracker {
 	private async refreshPath(path: string): Promise<void> {
 		const views = this.markdownViews().filter((v) => v.file?.path === path);
 		if (views.length === 0) return;
-		const original = this.isTracked(path) ? await this.loadOriginal(path) : null;
+		const original = this.isActive(path) ? await this.loadOriginal(path) : null;
 		for (const mv of views) this.paint(mv, original);
 		this.updateStatus();
 	}
@@ -223,7 +232,7 @@ export class EditTracker {
 		if (!v) return;
 		const path = mv.file?.path;
 		const st = path ? this.settings.tracking[path] : undefined;
-		if (!st || original === null) {
+		if (!st || st.paused || original === null) {
 			if (this.marked.has(v)) {
 				showTrack(v, null);
 				setReadOnly(v, false);
@@ -244,7 +253,7 @@ export class EditTracker {
 		for (const mv of this.markdownViews()) {
 			const path = mv.file?.path;
 			if (!path) continue;
-			if (this.isTracked(path)) paths.add(path);
+			if (this.isActive(path)) paths.add(path);
 			else this.paint(mv, null);
 		}
 		for (const p of paths) void this.refreshPath(p);
@@ -261,18 +270,17 @@ export class EditTracker {
 			const tab = (leaf as unknown as { tabHeaderEl?: HTMLElement }).tabHeaderEl;
 			if (!tab) return;
 			const v = leaf.view;
-			const tracked =
-				!clearAll && v instanceof MarkdownView && this.isTracked(v.file?.path ?? null);
+			const tracked = !clearAll && v instanceof MarkdownView && this.isActive(v.file?.path ?? null);
 			tab.toggleClass('markup-reviewer-tracked-tab', tracked);
 		});
 	}
 
-	/** Header buttons on tracked notes: cycle the display, and Done. Also the mobile entry points. */
+	/** Header buttons on tracked notes: cycle the display, and Stop (push). Also the mobile entry points. */
 	private syncActions(mv: MarkdownView, tracked: boolean): void {
 		const have = this.actions.get(mv);
 		if (tracked && !have) {
-			const done = mv.addAction('upload-cloud', 'Done: commit and push to GitHub', () => {
-				if (mv.file) void this.done(mv.file);
+			const done = mv.addAction('upload-cloud', 'Stop: commit and push to GitHub', () => {
+				if (mv.file) void this.stop(mv.file);
 			});
 			const cycle = mv.addAction('git-compare', 'Show original, markup or final', () => {
 				void this.cycleMode();
@@ -290,7 +298,7 @@ export class EditTracker {
 		if (!el) return;
 		el.empty();
 		const file = this.app.workspace.getActiveFile();
-		if (!file || !this.isTracked(file.path)) {
+		if (!file || !this.isActive(file.path)) {
 			el.hide();
 			return;
 		}
@@ -304,8 +312,8 @@ export class EditTracker {
 			b.addEventListener('click', () => void this.setMode(m));
 		}
 		const push = el.createSpan({ cls: 'markup-reviewer-status-push', text: 'Push' });
-		push.setAttribute('aria-label', 'Done: commit and push to GitHub');
-		push.addEventListener('click', () => void this.done(file));
+		push.setAttribute('aria-label', 'Stop: commit and push to GitHub');
+		push.addEventListener('click', () => void this.stop(file));
 	}
 
 	/** A paste, drop or drag-move seen by CodeMirror (e.g. Virtual Outliner's outline drags). */
@@ -317,7 +325,7 @@ export class EditTracker {
 	/** Remember pasted or dropped texts as hints for spotting moves and copies. */
 	private recordPastes(path: string | undefined, texts: string[]): void {
 		const st = path ? this.settings.tracking[path] : undefined;
-		if (!st) return;
+		if (!st || st.paused) return;
 		for (const t of texts) if (t.trim().length >= 3) st.pastes.push(t);
 		if (st.pastes.length > MAX_PASTES) st.pastes.splice(0, st.pastes.length - MAX_PASTES);
 		this.plugin.saveSessionSoon();
@@ -440,7 +448,7 @@ export class EditTracker {
 		const locked = this.lockedFile();
 		if (locked) {
 			new Notice(
-				`Markup Reviewer: already tracking ${locked.name}. Click Done or Stop on it before tracking another note.`,
+				`Markup Reviewer: already tracking ${locked.name}. Click Stop on it (or run Discard tracking without pushing) before tracking another note.`,
 			);
 			return;
 		}
@@ -509,8 +517,11 @@ export class EditTracker {
 		}
 	}
 
-	/** Done: check GitHub, draft a commit message for approval, stamp, push, and end tracking. */
-	async done(file: TFile): Promise<void> {
+	/**
+	 * Stop: check GitHub, draft a commit message for approval (Approve and push,
+	 * or Cancel to keep tracking), stamp, push, and end tracking.
+	 */
+	async stop(file: TFile): Promise<void> {
 		const st = this.settings.tracking[file.path];
 		if (!st) {
 			new Notice(`Markup Reviewer: ${file.name} isn't being tracked. Start tracking it first.`);
@@ -523,7 +534,7 @@ export class EditTracker {
 			const original = await this.loadOriginal(file.path);
 			if (original === null) {
 				new Notice(
-					`Markup Reviewer: the original (${sidecarPath(file.path, this.settings.originalSuffix)}) is missing. Stop tracking and start again to fetch it from GitHub.`,
+					`Markup Reviewer: the original (${sidecarPath(file.path, this.settings.originalSuffix)}) is missing. Run "Discard tracking without pushing" (your edits stay in the note), then Start again to fetch it from GitHub.`,
 					15000,
 				);
 				return;
@@ -531,7 +542,11 @@ export class EditTracker {
 			const text = await this.currentText(file);
 			const marks = computeMarks(original, text, st.pastes);
 			if (marks.length === 0) {
-				new Notice(`Markup Reviewer: no changes in ${file.name} since the original.`);
+				// Nothing to push, so nothing can be lost: just end the session.
+				await this.endTracking(file);
+				new Notice(
+					`Markup Reviewer: no changes in ${file.name} since the original, so nothing was pushed. Tracking ended.`,
+				);
 				return;
 			}
 
@@ -593,24 +608,48 @@ export class EditTracker {
 		}
 	}
 
-	/** Stop tracking: clear the marks and move the copy of the original to the trash. */
-	async stop(file: TFile): Promise<void> {
+	/** Pause: hide the marks and stop recording pastes, keeping the original. Nothing is pushed. */
+	async pause(file: TFile): Promise<void> {
+		const st = this.settings.tracking[file.path];
+		if (!st || st.paused) return;
+		st.paused = true;
+		await this.plugin.saveSettings();
+		this.refreshAll();
+		new Notice(`Markup Reviewer: tracking paused in ${file.name}. Nothing was pushed.`);
+	}
+
+	/** Resume a paused session: the marks come back against the same original. */
+	async resume(file: TFile): Promise<void> {
+		const st = this.settings.tracking[file.path];
+		if (!st || !st.paused) return;
+		st.paused = false;
+		await this.plugin.saveSettings();
+		this.refreshAll();
+		new Notice(`Markup Reviewer: tracking resumed in ${file.name}.`);
+	}
+
+	async togglePause(file: TFile): Promise<void> {
+		if (this.isPaused(file.path)) await this.resume(file);
+		else await this.pause(file);
+	}
+
+	/**
+	 * Discard the session without pushing: clear the marks and move the copy of
+	 * the original to the trash. The note keeps its edits; GitHub is untouched.
+	 */
+	async discard(file: TFile): Promise<void> {
 		if (!this.isTracked(file.path)) {
 			new Notice(`Markup Reviewer: ${file.name} isn't being tracked.`);
 			return;
 		}
 		const sidePath = sidecarPath(file.path, this.settings.originalSuffix);
-		const choice = await choose(
+		const ok = await confirm(
 			this.app,
-			'Stop tracking edits?',
-			`Stop clears the marks in ${file.name} and moves ${sidePath} to the trash without pushing: your note keeps your edits, and the copy on GitHub is not changed. To commit and push your edits first, choose Push instead.`,
-			[
-				{ text: 'Push instead (Done)', value: 'push' as const, cta: true },
-				{ text: 'Stop without pushing', value: 'stop' as const, destructive: true },
-			],
+			'Discard tracking without pushing?',
+			`The marks in ${file.name} disappear and ${sidePath} moves to the trash. Nothing is pushed: your note keeps your edits, and the copy on GitHub is not changed.`,
+			'Discard without pushing',
 		);
-		if (choice === 'push') return this.done(file);
-		if (choice !== 'stop') return;
+		if (!ok) return;
 		await this.endTracking(file);
 	}
 

@@ -113,17 +113,17 @@ export default class MarkupReviewerPlugin extends Plugin {
 			void fn(file);
 		};
 
-		// Done and Stop act on the tracked note, whichever note is active.
+		// Stop, Pause and Discard act on the tracked note, whichever note is active.
 		const withLocked = (fn: (file: TFile) => Promise<void>) => (): void => {
 			const locked = this.tracker.lockedFile();
 			if (locked) void fn(locked);
 			else withNote(fn)();
 		};
 
-		this.addRibbonIcon('git-compare', 'Track edits, or commit and push them', () => {
+		this.addRibbonIcon('git-compare', 'Track edits, or stop and push them', () => {
 			const locked = this.tracker.lockedFile();
 			if (locked) {
-				void this.tracker.done(locked);
+				void this.tracker.stop(locked);
 				return;
 			}
 			const file = this.activeNote();
@@ -139,15 +139,22 @@ export default class MarkupReviewerPlugin extends Plugin {
 			name: 'Start tracking edits in this note',
 			callback: withNote((f) => this.tracker.start(f)),
 		});
+		// Ids kept from earlier versions so existing hotkeys still work:
+		// track-done is now Stop (push), track-stop is now Discard.
 		this.addCommand({
 			id: 'track-done',
-			name: 'Done: commit and push to GitHub',
-			callback: withLocked((f) => this.tracker.done(f)),
+			name: 'Stop: commit and push to GitHub',
+			callback: withLocked((f) => this.tracker.stop(f)),
+		});
+		this.addCommand({
+			id: 'track-pause',
+			name: 'Pause or resume tracking',
+			callback: withLocked((f) => this.tracker.togglePause(f)),
 		});
 		this.addCommand({
 			id: 'track-stop',
-			name: 'Stop tracking edits in this note',
-			callback: withLocked((f) => this.tracker.stop(f)),
+			name: 'Discard tracking without pushing',
+			callback: withLocked((f) => this.tracker.discard(f)),
 		});
 		this.addCommand({
 			id: 'track-cycle',
