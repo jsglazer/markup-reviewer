@@ -42,6 +42,8 @@ export interface MarkupReviewerSettings {
 	originalSuffix: string;
 	/** Append each push's message and changes to `{note} Changes.md`. */
 	changeLog: boolean;
+	/** Pop up progress notices (checking GitHub, tracking started/paused/resumed, pushed). Problems always show. */
+	progressNotices: boolean;
 	/** How tracked edits are displayed. */
 	trackMode: TrackMode;
 	/** Tracked notes by path. */
@@ -62,6 +64,7 @@ export const DEFAULT_SETTINGS: MarkupReviewerSettings = {
 	githubBranch: 'main',
 	originalSuffix: '.original.md',
 	changeLog: false,
+	progressNotices: false,
 	trackMode: 'markup',
 	tracking: {},
 };
@@ -252,6 +255,18 @@ export class MarkupReviewerSettingTab extends PluginSettingTab {
 			.addToggle((t) =>
 				t.setValue(s.changeLog).onChange(async (value) => {
 					s.changeLog = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Show progress notices')
+			.setDesc(
+				'Pop up a notice for routine steps: checking GitHub, tracking started, paused or resumed, the display switched, and a successful push. Problems and warnings always show. When off, the review panel flashes green after a push.',
+			)
+			.addToggle((t) =>
+				t.setValue(s.progressNotices).onChange(async (value) => {
+					s.progressNotices = value;
 					await this.plugin.saveSettings();
 				}),
 			);

@@ -207,6 +207,11 @@ export default class MarkupReviewerPlugin extends Plugin {
 		this.view()?.renderTrackBar();
 	}
 
+	/** Briefly flash the panel's button row green to confirm a push. */
+	flashPushed(): void {
+		this.view()?.flashPushed();
+	}
+
 	activeSession(): ReviewSession | null {
 		return this.activePath ? (this.settings.sessions[this.activePath] ?? null) : null;
 	}

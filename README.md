@@ -93,6 +93,7 @@ All commands appear in the command palette prefixed with **Markup Reviewer:**, a
 | Branch | `main` | |
 | Original file suffix | `.original.md` | The local copy of the original sits next to the note under this name. |
 | Keep a change log | Off | Append each push's commit message and changes to `{note} Changes`. |
+| Show progress notices | Off | Pop up notices for routine steps (checking GitHub, tracking started, paused or resumed, display switched, pushed). Problems and warnings always show. When off, the panel's button row flashes green after a successful push. |
 
 ## Limits
 

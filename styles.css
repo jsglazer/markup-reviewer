@@ -255,6 +255,11 @@ body {
 	background-color: rgba(46, 160, 67, 0.18);
 }
 
+.markup-reviewer-track-actions.is-pushed {
+	background-color: rgba(46, 160, 67, 0.45);
+	transition: background-color 0.3s ease;
+}
+
 .markup-reviewer-track-actions.is-paused {
 	background-color: rgba(212, 167, 44, 0.2);
 }

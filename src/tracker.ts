@@ -169,6 +169,11 @@ export class EditTracker {
 		return null;
 	}
 
+	/** A routine progress notice: shown only when "Show progress notices" is on. */
+	private info(message: string): void {
+		if (this.settings.progressNotices) new Notice(message);
+	}
+
 	isTracked(path: string | undefined | null): boolean {
 		return !!path && !!this.settings.tracking[path];
 	}
@@ -197,7 +202,7 @@ export class EditTracker {
 	async cycleMode(): Promise<void> {
 		const next = MODES[(MODES.indexOf(this.mode) + 1) % MODES.length];
 		await this.setMode(next);
-		new Notice(`Markup Reviewer: showing the ${MODE_LABEL[next]}.`);
+		this.info(`Markup Reviewer: showing the ${MODE_LABEL[next]}.`);
 	}
 
 	private markdownViews(): MarkdownView[] {
@@ -473,7 +478,7 @@ export class EditTracker {
 			const repoPath = repoFilePath(git, file.name);
 			if (!repoPath) return;
 
-			new Notice(`Markup Reviewer: checking GitHub for ${repoPath}…`);
+			this.info(`Markup Reviewer: checking GitHub for ${repoPath}…`);
 			let remote;
 			try {
 				remote = await getFile(cfg, repoPath);
@@ -499,7 +504,7 @@ export class EditTracker {
 				if (!res) return;
 				original = res.text;
 				sha = res.sha;
-				new Notice(`Markup Reviewer: pushed ${file.name} to ${cfg.repo} (${shortSha(sha)}).`);
+				this.info(`Markup Reviewer: pushed ${file.name} to ${cfg.repo} (${shortSha(sha)}).`);
 			}
 
 			await this.writeOriginal(file, original);
@@ -511,7 +516,7 @@ export class EditTracker {
 			};
 			await this.plugin.saveSettings();
 			this.refreshAll();
-			new Notice(`Markup Reviewer: tracking edits in ${file.name} against the GitHub copy.`);
+			this.info(`Markup Reviewer: tracking edits in ${file.name} against the GitHub copy.`);
 		} finally {
 			this.busy.delete(file.path);
 		}
@@ -600,9 +605,10 @@ export class EditTracker {
 
 			if (this.settings.changeLog) await this.appendChangeLog(file, message, res.sha, excerpts);
 			await this.endTracking(file);
-			new Notice(
+			this.info(
 				`Markup Reviewer: pushed ${file.name} to ${cfg.repo} (${shortSha(res.sha)}). Tracking ended.`,
 			);
+			this.plugin.flashPushed();
 		} finally {
 			this.busy.delete(file.path);
 		}
@@ -615,7 +621,7 @@ export class EditTracker {
 		st.paused = true;
 		await this.plugin.saveSettings();
 		this.refreshAll();
-		new Notice(`Markup Reviewer: tracking paused in ${file.name}. Nothing was pushed.`);
+		this.info(`Markup Reviewer: tracking paused in ${file.name}. Nothing was pushed.`);
 	}
 
 	/** Resume a paused session: the marks come back against the same original. */
@@ -625,7 +631,7 @@ export class EditTracker {
 		st.paused = false;
 		await this.plugin.saveSettings();
 		this.refreshAll();
-		new Notice(`Markup Reviewer: tracking resumed in ${file.name}.`);
+		this.info(`Markup Reviewer: tracking resumed in ${file.name}.`);
 	}
 
 	async togglePause(file: TFile): Promise<void> {

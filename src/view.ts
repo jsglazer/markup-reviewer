@@ -22,6 +22,9 @@ import type MarkupReviewerPlugin from './main';
 
 export const VIEW_TYPE = 'markup-reviewer-panel';
 
+/** How long the button row flashes green after a push. */
+const PUSHED_FLASH_MS = 2500;
+
 const KIND_LABEL: Record<ReviewEdit['kind'], string> = {
 	replace: 'Replace',
 	insert: 'Insert',
@@ -375,6 +378,15 @@ export class MarkupReviewView extends ItemView {
 	 * while paused and light red when it isn't tracked.
 	 * Row 2: Orig | Mark | Final, with the current display highlighted.
 	 */
+	/** Until when (ms) the button row shows the green "pushed" flash. */
+	private pushedUntil = 0;
+
+	flashPushed(): void {
+		this.pushedUntil = Date.now() + PUSHED_FLASH_MS;
+		this.renderTrackBar();
+		window.setTimeout(() => this.renderTrackBar(), PUSHED_FLASH_MS + 50);
+	}
+
 	renderTrackBar(): void {
 		const bar = this.barEl;
 		if (!bar) {
@@ -419,7 +431,11 @@ export class MarkupReviewView extends ItemView {
 		}
 
 		const actions = bar.createDiv('markup-reviewer-track-row markup-reviewer-track-actions');
-		if (file) actions.addClass(paused ? 'is-paused' : tracked ? 'is-tracking' : 'is-stopped');
+		if (Date.now() < this.pushedUntil) {
+			actions.addClass('is-pushed');
+			actions.setAttribute('aria-label', 'Pushed to GitHub');
+		} else if (file)
+			actions.addClass(paused ? 'is-paused' : tracked ? 'is-tracking' : 'is-stopped');
 		const buttons: HTMLButtonElement[] = [];
 		const action = (
 			label: string,
