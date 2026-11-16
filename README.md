@@ -45,7 +45,7 @@ Markup Reviewer can also track edits you make by hand, show them as you type, an
 
 One note is tracked at a time. The top of the review panel (**Toggle review panel**) locks onto the tracked note until you click **Done** or **Stop**: its name stays at the top (click it to open the note), the buttons act on it whichever note you're in, and if you click into another note the panel warns that edits there aren't tracked. When nothing is tracked the panel follows the active note. While a note is tracked, its tab turns light red with a red title, even if another plugin (such as File and Folder Highlighter) colours that tab. The buttons are **Start | Stop | Done** on the first row, shaded light green while the note is being tracked and light red when it isn't, and **Orig | Mark | Final** on the second, with the current display highlighted.
 
-Your text is always in the note itself and saved by Obsidian as usual; the marks are only drawn on screen and are recalculated from the note and the original, so they survive undo, reloads and edits made elsewhere. Nothing is written into the note except the `git:` and `pushed:` fields. **Stop tracking edits in this note** clears the marks and moves the copy of the original to the trash; the note and GitHub are untouched.
+Your text is always in the note itself and saved by Obsidian as usual; the marks are only drawn on screen and are recalculated from the note and the original, so they survive undo, reloads and edits made elsewhere. Nothing is written into the note except the `git:` and `pushed:` fields. **Stop tracking edits in this note** clears the marks and moves the copy of the original to the trash; the note and GitHub are untouched. Its dialog also offers **Push instead (Done)**, in case you meant to push.
 
 With **Keep a change log** on, each push also appends the commit message and the changes (in [CriticMarkup](https://github.com/CriticMarkup/CriticMarkup-toolkit)) to a `{note} Changes` note next to the note.
 
@@ -70,7 +70,7 @@ All commands appear in the command palette prefixed with **Markup Reviewer:**, a
 |---|---|
 | Start tracking edits in this note | Fetch the GitHub copy as the original (pushing the note first if it isn't on GitHub) and start showing your edits. One note at a time: finish the tracked note with Done or Stop first. Also the compare icon in the ribbon when nothing is tracked. |
 | Done: commit and push to GitHub | Acts on the tracked note from anywhere. Check the GitHub copy is unchanged, show Claude's draft commit message for you to edit or approve, stamp `pushed:`, push, and end tracking. Also the status bar's Push button, the upload button in the note's header, and the ribbon's compare icon while a note is tracked. |
-| Stop tracking edits in this note | Acts on the tracked note from anywhere. Clear the marks, unlock the panel and move the copy of the original to the trash; the note and GitHub are unchanged. |
+| Stop tracking edits in this note | Acts on the tracked note from anywhere. Clear the marks, unlock the panel and move the copy of the original to the trash; the note and GitHub are unchanged. The dialog also offers **Push instead (Done)**. |
 | Cycle display: original, markup, final | Switch to the next display mode. Also the compare button in the note's header. |
 | Show the original | Show the text as it is on GitHub: additions hidden, deletions shown as plain text. The note is read-only in this view. |
 | Show the markup | Show your edits: red struck deletions, green additions, purple moves and copies. |

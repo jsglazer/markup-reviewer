@@ -13,7 +13,7 @@ import { getField, setField } from './core/frontmatter';
 import { isSidecar, pushedStamp, repoFilePath, sidecarPath } from './core/repo';
 import { computeMarks, criticExcerpts, describeStats, markStats, type Excerpt } from './core/track';
 import { getFile, putFile, type GitHubConfig } from './github';
-import { confirm, editCommitMessage, promptText } from './modals';
+import { choose, confirm, editCommitMessage, promptText } from './modals';
 import type MarkupReviewerPlugin from './main';
 
 const MODES: TrackMode[] = ['original', 'markup', 'final'];
@@ -600,13 +600,17 @@ export class EditTracker {
 			return;
 		}
 		const sidePath = sidecarPath(file.path, this.settings.originalSuffix);
-		const ok = await confirm(
+		const choice = await choose(
 			this.app,
 			'Stop tracking edits?',
-			`The marks in ${file.name} disappear and ${sidePath} moves to the trash. Your note and the copy on GitHub are not changed.`,
-			'Stop tracking',
+			`Stop clears the marks in ${file.name} and moves ${sidePath} to the trash without pushing: your note keeps your edits, and the copy on GitHub is not changed. To commit and push your edits first, choose Push instead.`,
+			[
+				{ text: 'Push instead (Done)', value: 'push' as const, cta: true },
+				{ text: 'Stop without pushing', value: 'stop' as const, destructive: true },
+			],
 		);
-		if (!ok) return;
+		if (choice === 'push') return this.done(file);
+		if (choice !== 'stop') return;
 		await this.endTracking(file);
 	}
 
