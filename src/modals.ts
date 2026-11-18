@@ -159,6 +159,39 @@ export function confirm(app: App, title: string, body: string, yes: string): Pro
 	});
 }
 
+/**
+ * Proceed | Abort. Abort is the default: it has the focus (so Enter aborts),
+ * and closing the dialog any other way aborts too. Resolves true only on Proceed.
+ */
+export function proceedOrAbort(app: App, title: string, body: string): Promise<boolean> {
+	return new Promise((resolve) => {
+		let answered = false;
+		let abortBtn: ButtonComponent | null = null;
+		const modal = new Modal(app);
+		modal.setTitle(title);
+		modal.contentEl.createEl('p', { text: body });
+		new Setting(modal.contentEl)
+			.addButton((b) =>
+				b.setButtonText('Proceed').onClick(() => {
+					answered = true;
+					resolve(true);
+					modal.close();
+				}),
+			)
+			.addButton((b) => {
+				abortBtn = b;
+				b.setButtonText('Abort')
+					.setCta()
+					.onClick(() => modal.close());
+			});
+		modal.onClose = () => {
+			if (!answered) resolve(false);
+		};
+		modal.open();
+		(abortBtn as ButtonComponent | null)?.buttonEl.focus();
+	});
+}
+
 /** Ask for one line of text. Resolves null on cancel. */
 export function promptText(
 	app: App,

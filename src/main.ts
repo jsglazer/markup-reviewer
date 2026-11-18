@@ -156,6 +156,12 @@ export default class MarkupReviewerPlugin extends Plugin {
 			name: 'Discard tracking without pushing',
 			callback: withLocked((f) => this.tracker.discard(f)),
 		});
+		// Sub acts on the tracked note when there is one, otherwise on the active note.
+		this.addCommand({
+			id: 'submit',
+			name: 'Sub: push the submitted version with its submitstamp',
+			callback: withLocked((f) => this.tracker.submit(f)),
+		});
 		this.addCommand({
 			id: 'track-cycle',
 			name: 'Cycle display: original, markup, final',

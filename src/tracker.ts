@@ -13,7 +13,7 @@ import { getField, setField } from './core/frontmatter';
 import { isSidecar, pushedStamp, repoFilePath, sidecarPath } from './core/repo';
 import { computeMarks, criticExcerpts, describeStats, markStats, type Excerpt } from './core/track';
 import { getFile, putFile, type GitHubConfig } from './github';
-import { confirm, editCommitMessage, promptText } from './modals';
+import { confirm, editCommitMessage, proceedOrAbort, promptText } from './modals';
 import type MarkupReviewerPlugin from './main';
 
 const MODES: TrackMode[] = ['original', 'markup', 'final'];
@@ -27,6 +27,12 @@ const REFRESH_MS = 250;
 
 function errText(e: unknown): string {
 	return e instanceof Error ? e.message : String(e);
+}
+
+/** The note's `submitstamp:` value, or null when it is missing, empty or a YAML null. */
+function submitStamp(text: string): string | null {
+	const v = getField(text, 'submitstamp')?.trim() ?? '';
+	return v === '' || v === '~' || v.toLowerCase() === 'null' ? null : v;
 }
 
 function shortSha(sha: string): string {
@@ -607,6 +613,98 @@ export class EditTracker {
 			await this.endTracking(file);
 			this.info(
 				`Markup Reviewer: pushed ${file.name} to ${cfg.repo} (${shortSha(res.sha)}). Tracking ended.`,
+			);
+			this.plugin.flashPushed();
+		} finally {
+			this.busy.delete(file.path);
+		}
+	}
+
+	/**
+	 * Sub: push the submitted version of a note with the commit message
+	 * "Submitted version {submitstamp}". Aborts when `submitstamp:` is missing or
+	 * empty, then asks Proceed | Abort (Abort is the default). Works on any note
+	 * with a `git:` path; a tracked note is pushed and its tracking ended, as Stop does.
+	 */
+	async submit(file: TFile): Promise<void> {
+		if (isSidecar(file.path, this.settings.originalSuffix)) {
+			// eslint-disable-next-line obsidianmd/ui/sentence-case -- "Markup Reviewer" is the plugin's name
+			new Notice('Markup Reviewer: this is the copy of an original. Open the note itself.');
+			return;
+		}
+		const text = await this.currentText(file);
+		const stamp = submitStamp(text);
+		if (stamp === null) {
+			new Notice(
+				`Markup Reviewer: ${file.name} has no submitstamp: value, so it wasn't submitted. Fill in submitstamp: and click Sub again.`,
+				10000,
+			);
+			return;
+		}
+		const st = this.settings.tracking[file.path];
+		let repoPath: string | null;
+		if (st) repoPath = st.repoPath;
+		else {
+			const git = getField(text, 'git');
+			repoPath = git ? repoFilePath(git, file.name) : null;
+			if (!repoPath) {
+				new Notice(
+					`Markup Reviewer: ${file.name} has no git: path, so there's nowhere to submit it. Fill in git: (or Start tracking it) first.`,
+					10000,
+				);
+				return;
+			}
+		}
+		const cfg = this.githubConfig();
+		if (!cfg || this.busy.has(file.path)) return;
+		this.busy.add(file.path);
+		try {
+			const message = `Submitted version ${stamp}`;
+			const ok = await proceedOrAbort(
+				this.app,
+				'Submit this version?',
+				`Push ${file.name} to ${cfg.repo} at ${repoPath} with the comment "${message}".${st ? ' Tracking ends after the push.' : ''}`,
+			);
+			if (!ok) return;
+
+			let remote;
+			try {
+				remote = await getFile(cfg, repoPath);
+			} catch (e) {
+				new Notice(`Markup Reviewer: ${errText(e)}`, 15000);
+				return;
+			}
+			const remoteSha = remote?.sha ?? null;
+			if (st && remoteSha !== st.sha) {
+				const go = await confirm(
+					this.app,
+					'GitHub copy has changed',
+					remote
+						? `The copy of ${file.name} on GitHub changed since you started tracking (it was pushed from somewhere else). Submitting will replace it with your version.`
+						: `${file.name} is no longer on GitHub at ${repoPath}. Submitting will create it again.`,
+					'Push anyway',
+				);
+				if (!go) return;
+			}
+
+			// Excerpts for the change log, taken before the push stamps `pushed:`.
+			const original = st ? await this.loadOriginal(file.path) : null;
+			let excerpts: Excerpt[] = [];
+			if (st && original !== null) {
+				const before = await this.currentText(file);
+				excerpts = criticExcerpts(before, computeMarks(original, before, st.pastes));
+			}
+
+			const res = await this.pushNote(file, cfg, repoPath, message, remoteSha);
+			if (!res) return;
+
+			if (st) {
+				if (this.settings.changeLog && excerpts.length > 0)
+					await this.appendChangeLog(file, message, res.sha, excerpts);
+				await this.endTracking(file);
+			}
+			this.info(
+				`Markup Reviewer: submitted ${file.name} to ${cfg.repo} (${shortSha(res.sha)}).${st ? ' Tracking ended.' : ''}`,
 			);
 			this.plugin.flashPushed();
 		} finally {

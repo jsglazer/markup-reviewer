@@ -464,6 +464,9 @@ export class MarkupReviewView extends ItemView {
 		action('Stop', 'Stop: commit and push to GitHub', tracked, (f) => tracker.stop(f));
 		if (paused) action('Resume', 'Resume tracking', true, (f) => tracker.resume(f));
 		else action('Pause', 'Pause tracking without pushing', tracked, (f) => tracker.pause(f));
+		action('Sub', 'Submit: push this version as "Submitted version {submitstamp}"', !!file, (f) =>
+			tracker.submit(f),
+		);
 
 		const modes = bar.createDiv('markup-reviewer-track-row markup-reviewer-track-modes');
 		const mode = (label: string, aria: string, m: TrackMode): void => {
