@@ -10,9 +10,9 @@ import type { EditorView } from '@codemirror/view';
 import { draftCommitMessage } from './claude';
 import { setPasteHook, setReadOnly, showTrack, viewOf, type TrackMode } from './cm-diff';
 import { getField, setField } from './core/frontmatter';
-import { isSidecar, pushedStamp, repoFilePath, sidecarPath } from './core/repo';
+import { isSidecar, pushedStamp, repoFilePath, sidecarPath, submitTagName } from './core/repo';
 import { computeMarks, criticExcerpts, describeStats, markStats, type Excerpt } from './core/track';
-import { getFile, putFile, type GitHubConfig } from './github';
+import { createTag, getFile, putFile, type GitHubConfig } from './github';
 import { confirm, editCommitMessage, proceedOrAbort, promptText } from './modals';
 import type MarkupReviewerPlugin from './main';
 
@@ -427,13 +427,13 @@ export class EditTracker {
 		repoPath: string,
 		message: string,
 		sha: string | null,
-	): Promise<{ text: string; sha: string } | null> {
+	): Promise<{ text: string; sha: string; commit: string | null } | null> {
 		const prev = getField(await this.currentText(file), 'pushed');
 		await this.writeField(file, 'pushed', pushedStamp(new Date()));
 		const text = await this.currentText(file);
 		try {
-			const newSha = await putFile(cfg, repoPath, text, message, sha);
-			return { text, sha: newSha };
+			const put = await putFile(cfg, repoPath, text, message, sha);
+			return { text, sha: put.sha, commit: put.commit };
 		} catch (e) {
 			await this.writeField(file, 'pushed', prev ?? '');
 			const msg = errText(e);
@@ -623,7 +623,8 @@ export class EditTracker {
 	/**
 	 * Sub: push the submitted version of a note with the commit message
 	 * "Submitted version {submitstamp}". Aborts when `submitstamp:` is missing or
-	 * empty, then asks Proceed | Abort (Abort is the default). Works on any note
+	 * empty, then asks Proceed | Abort (Abort is the default). After the push the
+	 * commit is tagged `submitted/{note}/{submitstamp}` on GitHub. Works on any note
 	 * with a `git:` path; a tracked note is pushed and its tracking ended, as Stop does.
 	 */
 	async submit(file: TFile): Promise<void> {
@@ -663,7 +664,7 @@ export class EditTracker {
 			const ok = await proceedOrAbort(
 				this.app,
 				'Submit this version?',
-				`Push ${file.name} to ${cfg.repo} at ${repoPath} with the comment "${message}".${st ? ' Tracking ends after the push.' : ''}`,
+				`Push ${file.name} to ${cfg.repo} at ${repoPath} with the comment "${message}", then tag it ${submitTagName(file.basename, stamp)}.${st ? ' Tracking ends after the push.' : ''}`,
 			);
 			if (!ok) return;
 
@@ -698,17 +699,46 @@ export class EditTracker {
 			const res = await this.pushNote(file, cfg, repoPath, message, remoteSha);
 			if (!res) return;
 
+			const tag = await this.tagSubmission(file, cfg, stamp, message, res.commit);
+
 			if (st) {
 				if (this.settings.changeLog && excerpts.length > 0)
 					await this.appendChangeLog(file, message, res.sha, excerpts);
 				await this.endTracking(file);
 			}
 			this.info(
-				`Markup Reviewer: submitted ${file.name} to ${cfg.repo} (${shortSha(res.sha)}).${st ? ' Tracking ended.' : ''}`,
+				`Markup Reviewer: submitted ${file.name} to ${cfg.repo} (${shortSha(res.sha)})${tag ? `, tagged ${tag}` : ''}.${st ? ' Tracking ended.' : ''}`,
 			);
 			this.plugin.flashPushed();
 		} finally {
 			this.busy.delete(file.path);
+		}
+	}
+
+	/**
+	 * Tag the submit commit on GitHub as `submitted/{note}/{submitstamp}`, so the
+	 * submitted version stays findable whatever is pushed later. The push has
+	 * already succeeded, so a failure here only warns. Returns the tag, or null.
+	 */
+	private async tagSubmission(
+		file: TFile,
+		cfg: GitHubConfig,
+		stamp: string,
+		message: string,
+		commit: string | null,
+	): Promise<string | null> {
+		const fail = (why: string) => {
+			new Notice(
+				`Markup Reviewer: submitted ${file.name}, but couldn't tag it on GitHub. ${why}`,
+				15000,
+			);
+			return null;
+		};
+		if (!commit) return fail('GitHub did not return the commit SHA.');
+		try {
+			return await createTag(cfg, submitTagName(file.basename, stamp), commit, message);
+		} catch (e) {
+			return fail(errText(e));
 		}
 	}
 

@@ -19,6 +19,13 @@ export interface RemoteFile {
 	text: string;
 }
 
+export interface PutResult {
+	/** New blob SHA of the file. */
+	sha: string;
+	/** SHA of the commit the push made, or null if GitHub didn't return it. */
+	commit: string | null;
+}
+
 export class GitHubError extends Error {
 	constructor(
 		message: string,
@@ -146,7 +153,7 @@ export async function putFile(
 	text: string,
 	message: string,
 	sha: string | null,
-): Promise<string> {
+): Promise<PutResult> {
 	const body: Record<string, string> = { message, content: encodeUtf8(text), branch: cfg.branch };
 	if (sha) body.sha = sha;
 	const res = await requestUrl({
@@ -159,8 +166,57 @@ export async function putFile(
 	});
 	if (res.status !== 200 && res.status !== 201)
 		throw fail(cfg, res.status, res.text, 'save the file');
-	const newSha = (safeJson(res.text) as { content?: { sha?: string } } | null)?.content?.sha;
+	const json = safeJson(res.text) as {
+		content?: { sha?: string };
+		commit?: { sha?: string };
+	} | null;
+	const newSha = json?.content?.sha;
 	if (!newSha)
 		throw new GitHubError('GitHub accepted the push but returned no file SHA.', res.status);
-	return newSha;
+	return { sha: newSha, commit: json?.commit?.sha ?? null };
+}
+
+function gitApi(cfg: GitHubConfig, path: string): string {
+	const r = parseRepo(cfg.repo);
+	if (!r) throw new Error(`"${cfg.repo}" is not a GitHub repository (expected owner/name).`);
+	return `https://api.github.com/repos/${r.owner}/${r.name}/git/${path}`;
+}
+
+/**
+ * Create an annotated tag `name` on `commit` and push its ref. When a tag of
+ * that name already exists, `-2`, `-3`, … is appended (up to `-9`), so a
+ * resubmission with the same stamp still gets its own tag. Returns the name used.
+ */
+export async function createTag(
+	cfg: GitHubConfig,
+	name: string,
+	commit: string,
+	message: string,
+): Promise<string> {
+	for (let n = 1; n <= 9; n++) {
+		const tag = n === 1 ? name : `${name}-${n}`;
+		const obj = await requestUrl({
+			url: gitApi(cfg, 'tags'),
+			method: 'POST',
+			headers: headers(cfg),
+			contentType: 'application/json',
+			body: JSON.stringify({ tag, message, object: commit, type: 'commit' }),
+			throw: false,
+		});
+		if (obj.status !== 201) throw fail(cfg, obj.status, obj.text, 'create the tag');
+		const tagSha = (safeJson(obj.text) as { sha?: string } | null)?.sha;
+		if (!tagSha) throw new GitHubError('GitHub created the tag but returned no SHA.', obj.status);
+		const ref = await requestUrl({
+			url: gitApi(cfg, 'refs'),
+			method: 'POST',
+			headers: headers(cfg),
+			contentType: 'application/json',
+			body: JSON.stringify({ ref: `refs/tags/${tag}`, sha: tagSha }),
+			throw: false,
+		});
+		if (ref.status === 201) return tag;
+		const exists = ref.status === 422 && /already exists/i.test(githubMessage(safeJson(ref.text)));
+		if (!exists) throw fail(cfg, ref.status, ref.text, 'create the tag');
+	}
+	throw new GitHubError(`Tags ${name} through ${name}-9 already exist on GitHub.`, 422);
 }

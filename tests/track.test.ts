@@ -7,6 +7,7 @@ import {
 	pushedStamp,
 	repoFilePath,
 	sidecarPath,
+	submitTagName,
 } from '../src/core/repo';
 import {
 	computeMarks,
@@ -213,5 +214,35 @@ describe('criticExcerpts', () => {
 		const orig = `${FM}aaa bbb ccc\n${filler}\nxxx yyy zzz\n`;
 		const cur = orig.replace('bbb', 'BBB').replace('yyy', 'YYY');
 		expect(criticExcerpts(cur, computeMarks(orig, cur))).toHaveLength(2);
+	});
+});
+
+describe('submitTagName', () => {
+	it('prefixes submitted/ and keeps a plain name and stamp', () => {
+		expect(submitTagName('Final', '20261118-162244')).toBe('submitted/Final/20261118-162244');
+	});
+
+	it('drops .md and turns spaces and git-illegal characters into -', () => {
+		expect(submitTagName('Asgn 03: Theory~Hypo?.md', '2026-11-18 16:22')).toBe(
+			'submitted/Asgn-03-Theory-Hypo/2026-11-18-16-22',
+		);
+	});
+
+	it('never produces .., a leading dot, a .lock end or an empty segment', () => {
+		const t = submitTagName('..hidden..name.lock', '***');
+		expect(t).toBe('submitted/hidden.name/version');
+		expect(t).not.toMatch(/\.\.|\/\.|\.lock(\/|$)|\/\//);
+		expect(submitTagName('', '')).toBe('submitted/note/version');
+	});
+
+	it('passes git check-ref-format rules for a range of inputs', () => {
+		// eslint-disable-next-line no-control-regex -- git forbids control characters in ref names
+		const bad = /[\x00-\x20~^:?*[\\]|\.\.|@\{|\/\.|\.lock(\/|$)|\/$|\.$/;
+		for (const [n, s] of [
+			['Final', '20261118-162244'],
+			['A [draft] ^v2', 'x@{y}'],
+			['élève', '\t'],
+		])
+			expect(submitTagName(n, s)).not.toMatch(bad);
 	});
 });

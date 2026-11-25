@@ -54,3 +54,24 @@ export function sidecarPath(notePath: string, suffix: string): string {
 export function isSidecar(path: string, suffix: string): boolean {
 	return suffix !== '' && path.toLowerCase().endsWith(suffix.toLowerCase());
 }
+
+/** One tag-name segment: only `A-Z a-z 0-9 . _ -`, no leading/trailing `.`/`-`, no `..`, no `.lock` end. */
+function tagSegment(s: string, fallback: string): string {
+	let t = s
+		.replace(/\.md$/i, '')
+		.replace(/[^A-Za-z0-9._-]+/g, '-')
+		.replace(/\.{2,}/g, '.')
+		.replace(/-{2,}/g, '-')
+		.replace(/^[.-]+|[.-]+$/g, '');
+	if (/\.lock$/i.test(t)) t = t.slice(0, -5).replace(/[.-]+$/, '');
+	return t || fallback;
+}
+
+/**
+ * Git tag name for a submitted version: `submitted/{note}/{submitstamp}`, e.g.
+ * `submitted/Final/20261118-162244`. Spaces and characters git refuses in ref
+ * names become `-`, so the result always passes `git check-ref-format`.
+ */
+export function submitTagName(noteName: string, stamp: string): string {
+	return `submitted/${tagSegment(noteName, 'note')}/${tagSegment(stamp, 'version')}`;
+}
