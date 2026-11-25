@@ -2,6 +2,7 @@ import { App, PluginSettingTab, SecretComponent, Setting } from 'obsidian';
 import type MarkupReviewerPlugin from './main';
 import type { ReviewSession } from './core/types';
 import type { TrackMode } from './cm-diff';
+import type { CursorDisplay } from './core/cursor';
 
 /** A note whose manual edits are being tracked against its GitHub original. */
 export interface TrackState {
@@ -31,6 +32,8 @@ export interface MarkupReviewerSettings {
 	autoAdvance: boolean;
 	/** Vault folder the PDF picker lists first (blank = whole vault). */
 	scanFolder: string;
+	/** Show the cursor's line (and optionally column) in the status bar. */
+	cursorDisplay: CursorDisplay;
 	/** Review sessions by note path, so closing the panel or Obsidian doesn't lose progress. */
 	sessions: Record<string, ReviewSession>;
 	/** Name of the secret in Obsidian's SecretStorage holding the GitHub token. */
@@ -58,6 +61,7 @@ export const DEFAULT_SETTINGS: MarkupReviewerSettings = {
 	keepTrail: true,
 	autoAdvance: true,
 	scanFolder: '',
+	cursorDisplay: 'line',
 	sessions: {},
 	githubTokenSecret: 'github-papers-token',
 	githubRepo: 'jsglazer/papers',
@@ -187,6 +191,20 @@ export class MarkupReviewerSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}),
 			);
+
+		new Setting(containerEl)
+			.setName('Cursor position in status bar')
+			.setDesc("Show which line of the active note you're on, and optionally the column.")
+			.addDropdown((d) => {
+				d.addOption('off', 'Off');
+				d.addOption('line', 'Line (default)');
+				d.addOption('line-col', 'Line and column');
+				d.setValue(s.cursorDisplay).onChange(async (value) => {
+					s.cursorDisplay = value as CursorDisplay;
+					await this.plugin.saveSettings();
+					this.plugin.lineStatus.refresh();
+				});
+			});
 
 		new Setting(containerEl).setName('Track manual edits').setHeading();
 

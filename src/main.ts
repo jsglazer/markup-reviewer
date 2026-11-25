@@ -17,6 +17,7 @@ import {
 	MarkupReviewerSettingTab,
 	type MarkupReviewerSettings,
 } from './settings';
+import { LineStatus } from './line-status';
 import { EditTracker } from './tracker';
 import { MarkupReviewView, VIEW_TYPE } from './view';
 
@@ -26,6 +27,8 @@ export default class MarkupReviewerPlugin extends Plugin {
 	undo!: UndoStack;
 	/** Manual edit tracking against the GitHub original. */
 	tracker!: EditTracker;
+	/** Status-bar readout of the cursor's line. */
+	lineStatus!: LineStatus;
 	/** Path of the note whose review the panel shows. */
 	private activePath: string | null = null;
 
@@ -41,6 +44,8 @@ export default class MarkupReviewerPlugin extends Plugin {
 		this.tracker = new EditTracker(this);
 		this.tracker.load();
 		this.registerTrackCommands();
+		this.lineStatus = new LineStatus(this);
+		this.lineStatus.load();
 
 		this.addRibbonIcon('pen-line', 'Review markup from a scanned PDF', () => {
 			void this.startFromActiveNote();
